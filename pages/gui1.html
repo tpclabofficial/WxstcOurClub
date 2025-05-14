@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>多维数据智能处理平台</title>
+    <link rel="stylesheet" href="../css/gui1.css">
+    <style>
+        .cursor-follower {position: fixed;top:0;left:0;width:20px;height:20px;background:rgba(0,123,255,0.3);border-radius:50%;pointer-events:none;z-index:9999;transition:transform 0.1s ease;}
+    </style>
+</head>
+<body>
+    <!-- 自定义光标 -->
+    <div class="cursor-follower" id="cursorFollower"></div>
+
+    <div class="container">
+        <header>
+            <h1>数据整合分析中心</h1>
+        </header>
+
+        <!-- 单文件处理 -->
+        <main>
+            <div class="upload-section">
+                <input type="file" id="dataInput" accept=".csv,.json,.txt">
+                <select id="dataType">
+                    <option value="csv">CSV文件</option>
+                    <option value="json">JSON数据</option>
+                    <option value="text">纯文本</option>
+                </select>
+                <button onclick="processData()">开始处理</button>
+            </div>
+
+            <!-- 分页控件 -->
+            <div class="pagination-controls">
+                <button onclick="prevPage()">上一页</button>
+                <span id="pageInfo">第 1 页 / 共 <span id="totalPages">1</span> 页</span>
+                <button onclick="nextPage()">下一页</button>
+                <select id="pageSizeSelector" onchange="changePageSize()">
+                    <option value="10">10行/页</option>
+                    <option value="50">50行/页</option>
+                    <option value="100">100行/页</option>
+                </select>
+            </div>
+
+            <!-- 数据标签页 -->
+            <div class="processing-tabs">
+                <button class="tablink active" onclick="openTab(event, 'raw')">原始数据</button>
+                <button class="tablink" onclick="openTab(event, 'cleaned')">清洗后</button>
+                <button class="tablink" onclick="openTab(event, 'transformed')">转换后</button>
+            </div>
+
+            <div id="raw" class="tabcontent">
+                <h2>原始数据预览</h2>
+                <pre id="rawData"></pre>
+            </div>
+
+            <div id="cleaned" class="tabcontent">
+                <h2>清洗后数据</h2>
+                <pre id="cleanedData"></pre>
+            </div>
+
+            <div id="transformed" class="tabcontent">
+                <h2>标准化数据</h2>
+                <pre id="transformedData"></pre>
+            </div>
+        </main>
+
+        <!-- 批量处理 -->
+        <div class="batch-upload">
+            <h3>批量处理</h3>
+            <div class="drop-zone" id="dropZone">
+                拖放多个文件到这里
+                <input type="file" id="batchInput" multiple accept=".csv,.json,.txt">
+            </div>
+            <ul id="fileList"></ul>
+            <button onclick="processAllFiles()">批量处理所有文件</button>
+        </div>
+
+        <!-- 字段映射 -->
+        <div class="field-mapping">
+            <h3>字段映射与转换</h3>
+            <div id="mappingFields"></div>
+            <button onclick="applyCustomMapping()">应用映射</button>
+        </div>
+
+        <!-- 数据过滤 -->
+        <div class="search-filter">
+            <h3>数据过滤</h3>
+            <input type="text" id="searchInput" placeholder="输入关键词进行过滤..." oninput="filterData()">
+        </div>
+
+        <!-- 数据导出 -->
+        <div class="export-section">
+            <h3>导出数据</h3>
+            <div class="export-buttons">
+                <button onclick="exportToCSV()">导出为 CSV</button>
+                <button onclick="exportToJSON()">导出为 JSON</button>
+                <button onclick="exportToTXT()">导出为 TXT</button>
+            </div>
+        </div>
+
+        <!-- 数据可视化 -->
+        <div class="visualization">
+            <h3>数据可视化</h3>
+            <canvas id="dataChart" width="600" height="300"></canvas>
+        </div>
+
+        <footer>
+            <p>© 2025时间碎片 数据智能处理平台 <span class="sparkle">✨</span></p>
+        </footer>
+    </div>
+
+    <!-- 依赖脚本 -->
+    <script src="../js/gui1-dataProcessor.js"></script>
+    <script src="../js/gui1-cursor.js"></script>
+    <script src="../js/gui1.js"></script>
+</body>
+</html>

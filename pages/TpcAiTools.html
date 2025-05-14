@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>时间碎片Ai工具</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Arial', sans-serif;
+            overflow-x: hidden;
+            background: linear-gradient(-45deg, #ee7752, #e73c7e, #23a6d5, #23d5ab);
+            background-size: 400% 400%;
+            animation: gradientBG 15s ease infinite;
+            color: white;
+            min-height: 100vh;
+        }
+        
+        @keyframes gradientBG {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+        
+        /* 导航栏样式 */
+        .navbar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            background: rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(10px);
+            z-index: 1000;
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.3);
+        }
+        
+        .nav-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-around;
+            padding: 15px 0;
+        }
+        
+        .nav-btn {
+            position: relative;
+            background: none;
+            border: none;
+            color: white;
+            font-size: 18px;
+            font-weight: bold;
+            padding: 10px 25px;
+            cursor: pointer;
+            border-radius: 30px;
+            overflow: hidden;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        .nav-btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: rgba(255, 255, 255, 0.3);
+            transition: all 0.4s ease;
+            z-index: -1;
+        }
+        
+        .nav-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+        }
+        
+        .nav-btn:hover::before {
+            left: 0;
+        }
+        
+        /* 内容区域样式 */
+        .content {
+            padding: 100px 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .section {
+            min-height: 100vh;
+            padding: 50px;
+            margin-bottom: 50px;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(5px);
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            opacity: 0;
+            transform: translateY(50px);
+            transition: all 0.8s ease;
+        }
+        
+        .section.active {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        
+        .section h2 {
+            font-size: 3rem;
+            margin-bottom: 30px;
+            text-align: center;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+        }
+        
+        .section p {
+            font-size: 1.2rem;
+            line-height: 1.8;
+            margin-bottom: 20px;
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.2);
+        }
+        
+        /* 雪花样式 */
+        .snowflake {
+            position: absolute;
+            background: white;
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: 100;
+            opacity: 0.8;
+            filter: drop-shadow(0 0 5px rgba(255, 255, 255, 0.7));
+        }
+        
+        /* 鼠标特效 */
+        .cursor {
+            position: fixed;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.5);
+            pointer-events: none;
+            transform: translate(-50%, -50%);
+            mix-blend-mode: screen;
+            z-index: 1000;
+            transition: transform 0.1s ease;
+        }
+        
+        .cursor-follower {
+            position: fixed;
+            width: 15px;
+            height: 15px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.3);
+            pointer-events: none;
+            transform: translate(-50%, -50%);
+            z-index: 999;
+            transition: transform 0.3s ease, width 0.3s ease, height 0.3s ease;
+        }
+        
+        /* 响应式设计 */
+        @media (max-width: 768px) {
+            .nav-container {
+                flex-direction: column;
+                align-items: center;
+            }
+            
+            .nav-btn {
+                margin: 5px 0;
+                width: 80%;
+                text-align: center;
+            }
+            
+            .section {
+                padding: 30px 20px;
+            }
+            
+            .section h2 {
+                font-size: 2rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- 导航栏 -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <button class="nav-btn" data-section="section1">图片处理</button>
+            <button class="nav-btn" data-section="section2">特征检测</button>
+            <button class="nav-btn" data-section="section3">目标追踪</button>
+            <button class="nav-btn" data-section="section4">视频分析</button>
+        </div>
+    </nav>
+    
+    <!-- 鼠标特效元素 -->
+    <div class="cursor"></div>
+    <div class="cursor-follower"></div>
+    
+    <!-- 内容区域 -->
+    <div class="content">
+        <section id="section1" class="section">
+            <h2>图片处理</h2>
+            <p>欢迎使用图片处理工具！我们的图片处理工具可以通过opencv.js对相关图片继续灰度、二值化处理等</p>
+            <p>在使用 OpenCV.js 处理图像时，首先要在 HTML 中引入该库并编写加载检测函数。之后创建canvas元素，将图像绘制到canvas上，利用cv.imread()读取图像，再用cv.imshow()显示图像，处理完后使用delete()释放内存。</p>
+            <p>具体处理操作包括颜色空间转换（如从 BGR 转换为 RGB、转换为灰度图）、调整大小、翻转等图像转换操作；对比度增强、直方图均衡化、锐化、中值滤波、高斯滤波等图像增强和噪声处理操作；以及阈值分割、区域生长、聚类、轮廓提取（包含查找轮廓、绘制轮廓、多边形拟合）等图像分割和轮廓提取操作。处理完成后可将结果绘制回canvas展示，同时注意使用完Mat对象后释放内存以防止内存泄漏。</p>
+	 <img src="../asset/images/8.png"  style="width: 100%; height: auto;" alt="时间碎片Lab图像处理工具">
+ 	<a href="image-processing.html" style="color:var(--secondary-color);text-decoration:none;margin-top:auto;">查看详情 →</a>
+        </section>
+        
+        <section id="section2" class="section">
+            <h2>特征检测</h2>
+            <p>该系统利用 OpenCV.js 实现图像特征检测。在 OpenCV.js 加载完成后，用户可通过拖放或点击选择文件的方式上传图片，系统会将上传的图片加载到Image对象，然后用户可以对相关图像进行操作</p>
+            <p>调整画布大小并绘制到对应的canvas上。点击 “启动时间碎片 Lab 分析” 按钮后，系统将图片转换为 OpenCV 的Mat对象，利用cv.cvtColor将图像从 RGBA 转换为 RGB，再通过cv.cvtColor将其转换为灰度图，接着使用cv.cornerHarris进行 Harris 角点检测，根据阈值筛选出特征点。简单特征匹配时，取前 N 个点（最多 100 个）进行匹配。绘制特征点时，先清除并重新绘制图像，创建渐变颜色后在图像对应位置绘制特征点。</p>
+	 <img src="../asset/images/9.png"  style="width: 100%; height: auto;" alt="时间碎片Lab特征检测工具">
+	<a href="feature-detection.html" style="color:var(--secondary-color);text-decoration:none;margin-top:auto;">查看详情 →</a>
+                   </section>
+        <section id="section3" class="section">
+            <h2>目标追踪</h2>
+            <p>该网页是一个具有图像和视频处理功能的交互平台。网页背景有星空特效，鼠标指针具有动态效果，增强视觉体验。用户能通过文件选择或调用摄像头上传图像、视频，上传后可在画布展示内容。</p>
+            <p>在交互操作上，用户能在画布绘制矩形框标注，标注信息包括颜色、宽度、标签和 ID ，绘制完成后相关标注信息会展示在页面，且支持删除单个标注；还能导出标注数据为 JSON 文件，或导入已有标注数据文件。此外，网页具备运动检测功能，开启后能对比视频帧检测运动，若运动像素超过一定比例，会在画布标记运动区域；</p>
+ <img src="../asset/images/10.png"  style="width: 100%; height: auto;" alt="时间碎片Lab图像处理工具">
+<a href="object-tracking.html" style="color:var(--secondary-color);text-decoration:none;margin-top:auto;">查看详情 →</a>
+                 </section>
+        <section id="section4" class="section">
+            <h2>视频分析</h2>
+            <p>“时间碎片 Lab - 视频分析工具” 的视频处理平台，为用户提供视频上传、多种分析功能及结果展示等服务。</p>
+            <p>用户能通过 “选择视频文件” 按钮上传视频，上传成功后视频会在预览窗口和原始视频区域展示，同时可启用 “开始分析” 按钮。分析功能包括运动检测、颜色追踪和边缘检测，用户在下拉菜单选择相应功能后点击 “开始分析” 即可执行。运动检测通过对比相邻帧像素 RGB 值差异实现，若差异超阈值则标记为运动；颜色追踪借助 Tracking.js 库，可对指定颜色（如洋红色、青色、黄色）进行追踪并在检测区域绘制边框和坐标；边缘检测运用 Sobel 算子将视频转换为灰度图后计算梯度幅度，超过阈值则认定为边缘。处理过程中，“停止” 按钮可暂停分析，“重置” 按钮能清除所有处理结果、重置视频和界面状态。</p>
+ <img src="../asset/images/6.png"  style="width: 100%; height: auto;" alt="时间碎片Lab图像处理工具">
+	<a href="video-analysis.html" style="color:var(--secondary-color);text-decoration:none;margin-top:auto;">查看详情 →</a>
+        </section>
+    </div>
+    
+    <script>
+        // 雪花特效
+        function createSnowflakes() {
+            const snowflakesContainer = document.createElement('div');
+            document.body.appendChild(snowflakesContainer);
+            
+            // 创建200片雪花
+            for (let i = 0; i < 200; i++) {
+                setTimeout(() => {
+                    const snowflake = document.createElement('div');
+                    snowflake.classList.add('snowflake');
+                    
+                    // 随机大小
+                    const size = Math.random() * 15 + 5;
+                    snowflake.style.width = `${size}px`;
+                    snowflake.style.height = `${size}px`;
+                    
+                    // 随机位置
+                    const startX = Math.random() * window.innerWidth;
+                    const endX = startX + (Math.random() * 200 - 100);
+                    const startY = -50;
+                    const endY = window.innerHeight + 50;
+                    
+                    snowflake.style.left = `${startX}px`;
+                    snowflake.style.top = `${startY}px`;
+                    
+                    // 随机透明度
+                    snowflake.style.opacity = Math.random() * 0.7 + 0.3;
+                    
+                    // 随机动画持续时间
+                    const duration = Math.random() * 20 + 10;
+                    
+                    // 添加动画
+                    snowflake.style.animation = `fall ${duration}s linear infinite`;
+                    
+                    // 创建关键帧
+                    const keyframes = `
+                        @keyframes fall {
+                            to {
+                                transform: translate(${endX - startX}px, ${endY - startY}px);
+                            }
+                        }
+                    `;
+                    
+                    const style = document.createElement('style');
+                    style.innerHTML = keyframes;
+                    document.head.appendChild(style);
+                    
+                    snowflakesContainer.appendChild(snowflake);
+                    
+                    // 鼠标悬停效果
+                    snowflake.addEventListener('mouseenter', () => {
+                        snowflake.style.transform = `scale(1.5)`;
+                        snowflake.style.opacity = '1';
+                        snowflake.style.background = 'rgba(255, 255, 255, 0.9)';
+                    });
+                    
+                    snowflake.addEventListener('mouseleave', () => {
+                        snowflake.style.transform = '';
+                        snowflake.style.opacity = Math.random() * 0.7 + 0.3;
+                        snowflake.style.background = 'white';
+                    });
+                }, Math.random() * 5000);
+            }
+        }
+        
+        // 鼠标特效
+        function initCursorEffect() {
+            const cursor = document.querySelector('.cursor');
+            const follower = document.querySelector('.cursor-follower');
+            
+            document.addEventListener('mousemove', (e) => {
+                cursor.style.left = `${e.clientX}px`;
+                cursor.style.top = `${e.clientY}px`;
+                
+                // 跟随光标有延迟效果
+                setTimeout(() => {
+                    follower.style.left = `${e.clientX}px`;
+                    follower.style.top = `${e.clientY}px`;
+                }, 100);
+            });
+            
+            // 鼠标悬停按钮效果
+            const buttons = document.querySelectorAll('.nav-btn');
+            buttons.forEach(button => {
+                button.addEventListener('mouseenter', () => {
+                    cursor.style.transform = 'translate(-50%, -50%) scale(2)';
+                    cursor.style.background = 'rgba(255, 255, 255, 0.8)';
+                    follower.style.width = '30px';
+                    follower.style.height = '30px';
+                    follower.style.background = 'rgba(255, 255, 255, 0.5)';
+                });
+                
+                button.addEventListener('mouseleave', () => {
+                    cursor.style.transform = 'translate(-50%, -50%) scale(1)';
+                    cursor.style.background = 'rgba(255, 255, 255, 0.5)';
+                    follower.style.width = '15px';
+                    follower.style.height = '15px';
+                    follower.style.background = 'rgba(255, 255, 255, 0.3)';
+                });
+            });
+            
+            // 鼠标悬停雪花效果
+            document.addEventListener('mouseover', (e) => {
+                if (e.target.classList.contains('snowflake')) {
+                    cursor.style.transform = 'translate(-50%, -50%) scale(1.5)';
+                    cursor.style.background = 'rgba(200, 230, 255, 0.8)';
+                }
+            });
+            
+            document.addEventListener('mouseout', (e) => {
+                if (e.target.classList.contains('snowflake')) {
+                    cursor.style.transform = 'translate(-50%, -50%) scale(1)';
+                    cursor.style.background = 'rgba(255, 255, 255, 0.5)';
+                }
+            });
+        }
+        
+        // 导航按钮点击效果
+        function initNavButtons() {
+            const buttons = document.querySelectorAll('.nav-btn');
+            const sections = document.querySelectorAll('.section');
+            
+            buttons.forEach(button => {
+                button.addEventListener('click', () => {
+                    const targetId = button.getAttribute('data-section');
+                    const targetSection = document.getElementById(targetId);
+                    
+                    // 滚动到目标区域
+                    targetSection.scrollIntoView({ behavior: 'smooth' });
+                    
+                    // 激活目标区域
+                    sections.forEach(section => {
+                        section.classList.remove('active');
+                    });
+                    targetSection.classList.add('active');
+                });
+            });
+        }
+        
+        // 滚动时激活可见区域
+        function initScrollAnimation() {
+            const sections = document.querySelectorAll('.section');
+            
+            function checkVisibility() {
+                sections.forEach(section => {
+                    const rect = section.getBoundingClientRect();
+                    const isVisible = (
+                        rect.top <= window.innerHeight * 0.75 && 
+                        rect.bottom >= window.innerHeight * 0.25
+                    );
+                    
+                    if (isVisible) {
+                        section.classList.add('active');
+                    }
+                });
+            }
+            
+            window.addEventListener('scroll', checkVisibility);
+            window.addEventListener('resize', checkVisibility);
+            
+            // 初始检查
+            checkVisibility();
+        }
+        
+        // 页面加载完成后初始化所有效果
+        window.addEventListener('DOMContentLoaded', () => {
+            createSnowflakes();
+            initCursorEffect();
+            initNavButtons();
+            initScrollAnimation();
+        });
+    </script>
+</body>
+</html>

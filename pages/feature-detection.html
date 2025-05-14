@@ -1,0 +1,593 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>时间碎片Lab特征检测系统</title>
+    <!-- 国内CDN资源 -->
+    <link href="https://cdn.bootcdn.net/ajax/libs/normalize/8.0.1/normalize.min.css" rel="stylesheet">
+    <script src="../opencv.js" onload="onOpenCvReady();" async></script>
+    <style>
+        :root {
+            --prism-gradient: linear-gradient(45deg, 
+                #4a90e2 0%, 
+                #6c5ce7 25%, 
+                #e74c3c 50%, 
+                #2ecc71 75%, 
+                #f1c40f 100%);
+            --text-primary: #e0e0ff;
+            --text-secondary: #b0b0ff;
+            --text-error: #ff6b6b;
+        }
+
+        body {
+            background: #0a0a2e;
+            font-family: 'Microsoft YaHei', sans-serif;
+            min-height: 100vh;
+            margin: 0;
+            overflow-x: hidden;
+            color: var(--text-primary);
+        }
+
+        .prism-bg {
+            position: fixed;
+            width: 200vw;
+            height: 200vh;
+            background: var(--prism-gradient);
+            opacity: 0.08;
+            filter: blur(100px);
+            animation: prismRotate 20s linear infinite;
+            z-index: -2;
+            top: -50vh;
+            left: -50vw;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            position: relative;
+        }
+
+        .upload-area {
+            border: 2px solid;
+            border-image: var(--prism-gradient) 1;
+            border-radius: 15px;
+            padding: 30px;
+            text-align: center;
+            background: rgba(16, 22, 58, 0.7);
+            transition: all 0.3s;
+            cursor: pointer;
+            backdrop-filter: blur(5px);
+            margin-bottom: 30px;
+            color: var(--text-secondary);
+        }
+
+        .upload-area:hover {
+            transform: scale(1.02);
+            box-shadow: 0 0 40px rgba(74, 144, 226, 0.3);
+        }
+
+        .upload-area h2 {
+            color: var(--text-primary);
+            margin-top: 0;
+        }
+
+        .canvas-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        canvas {
+            background: #1a1a4a;
+            border-radius: 10px;
+            border: 2px solid;
+            border-image: var(--prism-gradient) 1;
+            box-shadow: 0 0 20px rgba(74, 144, 226, 0.2);
+            width: 100%;
+        }
+
+        .prism-particle {
+            position: absolute;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            pointer-events: none;
+            animation: prismParticle 1.5s ease-out forwards;
+            mix-blend-mode: screen;
+        }
+
+        .control-panel {
+            text-align: center;
+            margin-top: 20px;
+        }
+
+        button {
+            background: var(--prism-gradient);
+            background-size: 200% auto;
+            border: none;
+            padding: 12px 30px;
+            color: white;
+            border-radius: 25px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-weight: bold;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 4px 15px rgba(74, 144, 226, 0.3);
+            font-size: 16px;
+        }
+
+        button:hover {
+            background-position: right center;
+            transform: translateY(-3px);
+            box-shadow: 0 7px 20px rgba(74, 144, 226, 0.4);
+        }
+
+        button:active {
+            transform: translateY(1px);
+        }
+
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        button::after {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: linear-gradient(45deg, 
+                transparent 45%,
+                rgba(255,255,255,0.3) 50%,
+                transparent 55%);
+            animation: buttonGlow 3s infinite linear;
+        }
+
+        h1 {
+            text-align: center;
+            background: linear-gradient(45deg, #4a90e2, #e74c3c);
+            -webkit-background-clip: text;
+            color: transparent;
+            margin-bottom: 30px;
+            font-size: 2.5em;
+            text-shadow: 0 2px 10px rgba(74, 144, 226, 0.3);
+        }
+
+        @keyframes prismRotate {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        @keyframes prismParticle {
+            0% {
+                transform: scale(1);
+                opacity: 0.8;
+            }
+            100% {
+                transform: scale(3);
+                opacity: 0;
+            }
+        }
+
+        @keyframes buttonGlow {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .status {
+            text-align: center;
+            margin: 15px 0;
+            min-height: 24px;
+            font-size: 16px;
+        }
+
+        .status.ready {
+            color: var(--text-secondary);
+        }
+
+        .status.processing {
+            color: #f1c40f;
+        }
+
+        .status.success {
+            color: #2ecc71;
+        }
+
+        .status.error {
+            color: var(--text-error);
+        }
+
+        .result-container {
+            margin-top: 30px;
+            display: none;
+        }
+
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255,255,255,0.3);
+            border-radius: 50%;
+            border-top-color: var(--text-primary);
+            animation: spin 1s ease-in-out infinite;
+            margin-right: 10px;
+            vertical-align: middle;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="prism-bg"></div>
+    <div class="container">
+        <h1>时间碎片Lab特征检测系统</h1>
+        
+        <div class="upload-area" id="dropZone">
+            <h2>拖放图像至此处或点击选择文件</h2>
+            <p>支持同时上传两张图片进行特征匹配</p>
+            <input type="file" id="fileInput" hidden accept="image/*" multiple>
+        </div>
+        
+        <div class="status ready" id="status">准备就绪，请上传图像...</div>
+        
+        <div class="canvas-container">
+            <canvas id="canvas1"></canvas>
+            <canvas id="canvas2"></canvas>
+        </div>
+        
+        <div class="control-panel">
+            <button id="processBtn" disabled>启动时间碎片Lab分析</button>
+        </div>
+        
+        <div class="result-container" id="resultContainer">
+            <canvas id="resultCanvas"></canvas>
+        </div>
+    </div>
+
+    <script>
+        // 粒子系统
+        class PrismParticleSystem {
+            constructor() {
+                this.colors = ['#4a90e2', '#6c5ce7', '#e74c3c', '#2ecc71', '#f1c40f'];
+            }
+            
+            create(x, y) {
+                const particle = document.createElement('div');
+                particle.className = 'prism-particle';
+                particle.style.left = `${x}px`;
+                particle.style.top = `${y}px`;
+                particle.style.background = this.colors[Math.floor(Math.random() * this.colors.length)];
+                document.body.appendChild(particle);
+                
+                particle.addEventListener('animationend', () => {
+                    particle.remove();
+                });
+            }
+        }
+
+        // 初始化粒子系统
+        const particleSystem = new PrismParticleSystem();
+        
+        // 全局变量
+        let cvReady = false;
+        const statusElement = document.getElementById('status');
+        const processBtn = document.getElementById('processBtn');
+        let images = [];
+        const canvas1 = document.getElementById('canvas1');
+        const canvas2 = document.getElementById('canvas2');
+        const resultCanvas = document.getElementById('resultCanvas');
+        const resultContainer = document.getElementById('resultContainer');
+        const ctx1 = canvas1.getContext('2d');
+        const ctx2 = canvas2.getContext('2d');
+        const resultCtx = resultCanvas.getContext('2d');
+
+        // OpenCV加载完成回调
+        function onOpenCvReady() {
+            cvReady = true;
+            setStatus('OpenCV.js已加载，准备就绪', 'ready');
+            console.log('OpenCV.js is ready');
+        }
+
+        // 设置状态
+        function setStatus(message, type = 'ready') {
+            statusElement.textContent = message;
+            statusElement.className = `status ${type}`;
+            
+            if (type === 'processing') {
+                statusElement.innerHTML = `<span class="loading"></span>${message}`;
+            }
+        }
+
+        // 鼠标交互效果
+        document.addEventListener('mousemove', (e) => {
+            for(let i = 0; i < 3; i++) {
+                particleSystem.create(
+                    e.clientX + Math.random() * 20 - 10,
+                    e.clientY + Math.random() * 20 - 10
+                );
+            }
+        });
+
+        // 拖放区域交互效果
+        const dropZone = document.getElementById('dropZone');
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'copy';
+            dropZone.style.transform = 'scale(1.02)';
+            dropZone.style.boxShadow = '0 0 30px rgba(74, 144, 226, 0.5)';
+        });
+        
+        dropZone.addEventListener('dragleave', () => {
+            dropZone.style.transform = '';
+            dropZone.style.boxShadow = '';
+        });
+        
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.style.transform = '';
+            dropZone.style.boxShadow = '';
+            handleFileDrop(e.dataTransfer.files);
+        });
+        
+        dropZone.addEventListener('click', () => {
+            document.getElementById('fileInput').click();
+        });
+
+        // 文件处理
+        const fileInput = document.getElementById('fileInput');
+        fileInput.addEventListener('change', (e) => {
+            handleFileDrop(e.target.files);
+        });
+
+        // 处理拖放/选择的文件
+        async function handleFileDrop(files) {
+            if (!files || files.length === 0) return;
+            
+            try {
+                setStatus('正在加载图像...', 'processing');
+                
+                // 只取前两张图片
+                const fileArray = Array.from(files).slice(0, 2);
+                images = await Promise.all(fileArray.map(loadImage));
+                
+                // 调整画布大小
+                adjustCanvasSize();
+                
+                // 绘制图像
+                drawImages();
+                
+                setStatus(`已加载 ${images.length} 张图像，点击"启动时间碎片Lab分析"按钮开始处理`, 'ready');
+                processBtn.disabled = false;
+            } catch (error) {
+                setStatus(`图像加载失败: ${error.message}`, 'error');
+                console.error(error);
+            }
+        }
+
+        // 加载图像
+        function loadImage(file) {
+            return new Promise((resolve, reject) => {
+                const img = new Image();
+                img.onload = () => resolve(img);
+                img.onerror = () => reject(new Error('无法加载图像'));
+                img.src = URL.createObjectURL(file);
+            });
+        }
+
+        // 调整画布大小
+        function adjustCanvasSize() {
+            const maxWidth = 500;
+            const maxHeight = 400;
+            
+            images.forEach((img, i) => {
+                const canvas = i === 0 ? canvas1 : canvas2;
+                const ratio = Math.min(
+                    maxWidth / img.width,
+                    maxHeight / img.height
+                );
+                
+                canvas.width = img.width * ratio;
+                canvas.height = img.height * ratio;
+            });
+        }
+
+        // 绘制图像到画布
+        function drawImages() {
+            images.forEach((img, i) => {
+                const canvas = i === 0 ? canvas1 : canvas2;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+            });
+        }
+
+        // 处理按钮点击事件
+        processBtn.addEventListener('click', async () => {
+            if (!cvReady) {
+                setStatus('OpenCV.js尚未加载完成，请稍后再试', 'error');
+                return;
+            }
+            
+            if (images.length < 2) {
+                setStatus('请上传两张图片进行特征匹配', 'error');
+                return;
+            }
+            
+            try {
+                setStatus('正在处理图像...', 'processing');
+                processBtn.disabled = true;
+                
+                // 使用OpenCV处理图像
+                const [mat1, mat2] = await Promise.all([
+                    loadImageToMat(images[0], canvas1),
+                    loadImageToMat(images[1], canvas2)
+                ]);
+                
+                // 检测特征点
+                const kp1 = detectHarrisFeatures(mat1);
+                const kp2 = detectHarrisFeatures(mat2);
+                
+                // 匹配特征点
+                const matches = matchFeatures(kp1, kp2);
+                
+                // 绘制结果
+                drawKeyPoints(ctx1, kp1, canvas1);
+                drawKeyPoints(ctx2, kp2, canvas2);
+                visualizeMatches(matches);
+                
+                // 释放内存
+                mat1.delete();
+                mat2.delete();
+                
+                setStatus(`处理完成，检测到 ${kp1.length} 和 ${kp2.length} 个特征点，匹配 ${matches.length} 对`, 'success');
+                processBtn.disabled = false;
+            } catch (error) {
+                setStatus(`处理失败: ${error.message}`, 'error');
+                console.error(error);
+                processBtn.disabled = false;
+            }
+        });
+
+        // 加载图像到OpenCV矩阵
+        function loadImageToMat(img, canvas) {
+            return new Promise((resolve) => {
+                const mat = cv.imread(canvas);
+                cv.cvtColor(mat, mat, cv.COLOR_RGBA2RGB);
+                resolve(mat);
+            });
+        }
+
+        // Harris角点检测
+        function detectHarrisFeatures(src) {
+            const gray = new cv.Mat();
+            cv.cvtColor(src, gray, cv.COLOR_RGB2GRAY);
+            
+            const corners = new cv.Mat();
+            cv.cornerHarris(gray, corners, 2, 3, 0.04);
+            
+            const keyPoints = [];
+            const threshold = 0.01 * cv.minMaxLoc(corners).maxVal;
+            
+            for(let i = 0; i < corners.rows; i++) {
+                for(let j = 0; j < corners.cols; j++) {
+                    if(corners.floatAt(i, j) > threshold) {
+                        keyPoints.push({
+                            x: j * (src.cols / corners.cols),
+                            y: i * (src.rows / corners.rows),
+                            score: corners.floatAt(i, j)
+                        });
+                    }
+                }
+            }
+            
+            // 释放内存
+            gray.delete();
+            corners.delete();
+            
+            return keyPoints;
+        }
+
+        // 简单特征匹配
+        function matchFeatures(kp1, kp2) {
+            // 简单实现：取前N个点进行匹配
+            const maxMatches = 100;
+            const count = Math.min(kp1.length, kp2.length, maxMatches);
+            
+            return Array.from({length: count}, (_, i) => ({
+                point1: kp1[i],
+                point2: kp2[i]
+            }));
+        }
+
+        // 绘制特征点
+        function drawKeyPoints(ctx, keypoints, canvas) {
+            // 清除并重新绘制图像
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.drawImage(
+                canvas === canvas1 ? images[0] : images[1], 
+                0, 0, canvas.width, canvas.height
+            );
+            
+            // 创建渐变颜色
+            const gradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
+            gradient.addColorStop(0, '#4a90e2');
+            gradient.addColorStop(1, '#e74c3c');
+            
+            // 绘制特征点
+            ctx.strokeStyle = gradient;
+            ctx.lineWidth = 2;
+            
+            keypoints.forEach(kp => {
+                ctx.beginPath();
+                ctx.arc(kp.x, kp.y, 4, 0, Math.PI * 2);
+                ctx.stroke();
+            });
+        }
+
+        // 可视化匹配结果
+        function visualizeMatches(matches) {
+            // 设置结果画布大小
+            resultCanvas.width = canvas1.width + canvas2.width;
+            resultCanvas.height = Math.max(canvas1.height, canvas2.height);
+            
+            // 绘制原始图像
+            resultCtx.drawImage(canvas1, 0, 0);
+            resultCtx.drawImage(canvas2, canvas1.width, 0);
+            
+            // 绘制匹配线
+            matches.forEach(match => {
+                const startX = match.point1.x;
+                const startY = match.point1.y;
+                const endX = canvas1.width + match.point2.x;
+                const endY = match.point2.y;
+                
+                // 创建渐变线
+                const gradient = resultCtx.createLinearGradient(startX, startY, endX, endY);
+                gradient.addColorStop(0, '#4a90e2');
+                gradient.addColorStop(1, '#e74c3c');
+                
+                resultCtx.beginPath();
+                resultCtx.moveTo(startX, startY);
+                resultCtx.lineTo(endX, endY);
+                
+                resultCtx.strokeStyle = gradient;
+                resultCtx.lineWidth = 1;
+                resultCtx.stroke();
+            });
+            
+            // 显示结果容器
+            resultContainer.style.display = 'block';
+            
+            // 添加粒子效果庆祝完成
+            for(let i = 0; i < 50; i++) {
+                setTimeout(() => {
+                    particleSystem.create(
+                        Math.random() * window.innerWidth,
+                        Math.random() * window.innerHeight
+                    );
+                }, i * 50);
+            }
+        }
+
+        // 检查OpenCV是否加载
+        function checkOpenCV() {
+            if (!window.cv) {
+                setTimeout(checkOpenCV, 100);
+            } else {
+                onOpenCvReady();
+            }
+        }
+
+        // 页面加载完成后初始化
+        window.addEventListener('load', () => {
+            checkOpenCV();
+        });
+    </script>
+</body>
+</html>

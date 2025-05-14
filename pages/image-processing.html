@@ -1,0 +1,721 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TPCLab图像处理工具</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #3498db;
+            --secondary: #2ecc71;
+            --dark: #2c3e50;
+            --light: #ecf0f1;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f8f9fa;
+            color: #333;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            color: white;
+            padding: 2rem 0;
+            margin-bottom: 2rem;
+            border-radius: 0 0 10px 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        
+        .card {
+            border: none;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            margin-bottom: 2rem;
+            transition: transform 0.3s;
+        }
+        
+        .card:hover {
+            transform: translateY(-5px);
+        }
+        
+        .btn-primary {
+            background-color: var(--primary);
+            border-color: var(--primary);
+        }
+        
+        .btn-success {
+            background-color: var(--secondary);
+            border-color: var(--secondary);
+        }
+        
+        .image-preview {
+            border: 2px dashed #ddd;
+            border-radius: 8px;
+            padding: 1rem;
+            background-color: white;
+            min-height: 200px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .image-preview:hover {
+            border-color: var(--primary);
+        }
+        
+        .image-preview i {
+            font-size: 3rem;
+            color: #aaa;
+            margin-bottom: 1rem;
+        }
+        
+        .image-container {
+            position: relative;
+            margin-bottom: 1rem;
+        }
+        
+        .image-container canvas {
+            max-width: 100%;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .progress-container {
+            margin: 1rem 0;
+        }
+        
+        .method-selector {
+            margin-bottom: 1rem;
+        }
+        
+        .action-buttons {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+        
+        @media (max-width: 768px) {
+            .action-buttons {
+                flex-direction: column;
+            }
+            
+            .action-buttons .btn {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header text-center">
+        <div class="container">
+            <h1 class="display-4">TpcLab图像处理工具</h1>
+            <p class="lead">使用OpenCV实现多种图像处理算法</p>
+        </div>
+    </div>
+    
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-8 mx-auto">
+                <div class="card">
+                    <div class="card-body">
+                        <h5 class="card-title">上传图像</h5>
+                        <div class="image-preview" id="drop-zone">
+                            <i class="bi bi-images"></i>
+                            <p>点击或拖放图像文件到此处</p>
+                            <p class="text-muted small">支持JPG, PNG, BMP格式</p>
+                            <input type="file" id="image-input" class="d-none" accept="image/*" multiple>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <div class="card-body">
+                        <h5 class="card-title">处理选项</h5>
+                        <div class="method-selector">
+                            <label for="processing-method" class="form-label">选择处理方法:</label>
+                            <select id="processing-method" class="form-select">
+                                <option value="grayscale">灰度化</option>
+                                <option value="canny">Canny边缘检测</option>
+                                <option value="blur">高斯模糊</option>
+                                <option value="threshold">阈值处理</option>
+                                <option value="sobel">Sobel算子</option>
+                                <option value="custom">自定义参数</option>
+                            </select>
+                        </div>
+                        
+                        <div id="custom-params" class="mb-3" style="display: none;">
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label for="param1" class="form-label">参数1</label>
+                                    <input type="range" class="form-range" id="param1" min="0" max="100" value="50">
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="param2" class="form-label">参数2</label>
+                                    <input type="range" class="form-range" id="param2" min="0" max="100" value="50">
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="action-buttons">
+                            <button id="process-btn" class="btn btn-primary">
+                                <i class="bi bi-magic"></i> 处理图像
+                            </button>
+                            <button id="process-all-btn" class="btn btn-success" disabled>
+                                <i class="bi bi-lightning"></i> 批量处理
+                            </button>
+                            <button id="reset-btn" class="btn btn-outline-secondary">
+                                <i class="bi bi-arrow-counterclockwise"></i> 重置
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="progress-container" id="progress-container" style="display: none;">
+                    <div class="progress">
+                        <div class="progress-bar progress-bar-striped progress-bar-animated" 
+                             id="progress-bar" role="progressbar" style="width: 0%"></div>
+                    </div>
+                    <div class="text-center mt-2" id="progress-text">准备处理...</div>
+                </div>
+                
+                <div id="results-container">
+                    <!-- 处理结果将在这里动态生成 -->
+                </div>
+                
+                <div class="text-center mt-3" id="download-all-container" style="display: none;">
+                    <button id="download-all-btn" class="btn btn-primary">
+                        <i class="bi bi-download"></i> 下载全部处理结果
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 模态框 -->
+    <div class="modal fade" id="imageModal" tabindex="-1">
+        <div class="modal-dialog modal-xl">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">图像预览</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body text-center">
+                    <img id="modal-image" src="" class="img-fluid">
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
+                    <button type="button" class="btn btn-primary" id="download-modal-image">下载</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="../opencv.js"></script>
+    <script>
+        // 主应用逻辑
+        document.addEventListener('DOMContentLoaded', function() {
+            // 初始化变量
+            let uploadedImages = [];
+            let processedImages = [];
+            
+            // 获取DOM元素
+            const imageInput = document.getElementById('image-input');
+            const dropZone = document.getElementById('drop-zone');
+            const processBtn = document.getElementById('process-btn');
+            const processAllBtn = document.getElementById('process-all-btn');
+            const resetBtn = document.getElementById('reset-btn');
+            const downloadAllBtn = document.getElementById('download-all-btn');
+            const processingMethod = document.getElementById('processing-method');
+            const customParams = document.getElementById('custom-params');
+            const progressContainer = document.getElementById('progress-container');
+            const progressBar = document.getElementById('progress-bar');
+            const progressText = document.getElementById('progress-text');
+            const resultsContainer = document.getElementById('results-container');
+            const downloadAllContainer = document.getElementById('download-all-container');
+            const imageModal = new bootstrap.Modal(document.getElementById('imageModal'));
+            const modalImage = document.getElementById('modal-image');
+            const downloadModalImageBtn = document.getElementById('download-modal-image');
+            
+            // 拖放功能
+            dropZone.addEventListener('click', () => imageInput.click());
+            
+            ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+                dropZone.addEventListener(eventName, preventDefaults, false);
+            });
+            
+            function preventDefaults(e) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
+            
+            ['dragenter', 'dragover'].forEach(eventName => {
+                dropZone.addEventListener(eventName, highlight, false);
+            });
+            
+            ['dragleave', 'drop'].forEach(eventName => {
+                dropZone.addEventListener(eventName, unhighlight, false);
+            });
+            
+            function highlight() {
+                dropZone.style.borderColor = '#3498db';
+                dropZone.style.backgroundColor = '#f0f8ff';
+            }
+            
+            function unhighlight() {
+                dropZone.style.borderColor = '#ddd';
+                dropZone.style.backgroundColor = 'white';
+            }
+            
+            dropZone.addEventListener('drop', handleDrop, false);
+            
+            function handleDrop(e) {
+                const dt = e.dataTransfer;
+                const files = dt.files;
+                imageInput.files = files;
+                handleFiles(files);
+            }
+            
+            // 文件处理
+            imageInput.addEventListener('change', () => handleFiles(imageInput.files));
+            
+            function handleFiles(files) {
+                if (!files.length) return;
+                
+                // 清空之前的结果
+                resultsContainer.innerHTML = '';
+                uploadedImages = [];
+                processedImages = [];
+                downloadAllContainer.style.display = 'none';
+                
+                // 显示进度条
+                progressContainer.style.display = 'block';
+                progressBar.style.width = '0%';
+                progressText.textContent = `加载图片中 (0/${files.length})`;
+                
+                // 处理每个文件
+                Array.from(files).forEach((file, index) => {
+                    const reader = new FileReader();
+                    
+                    reader.onload = function(event) {
+                        const img = new Image();
+                        img.onload = function() {
+                            // 创建图像容器
+                            const container = document.createElement('div');
+                            container.className = 'card mb-3';
+                            container.id = `image-container-${index}`;
+                            
+                            const cardBody = document.createElement('div');
+                            cardBody.className = 'card-body';
+                            
+                            // 创建行
+                            const row = document.createElement('div');
+                            row.className = 'row';
+                            
+                            // 原始图像列
+                            const originalCol = document.createElement('div');
+                            originalCol.className = 'col-md-6 mb-3 mb-md-0';
+                            
+                            const originalTitle = document.createElement('h6');
+                            originalTitle.className = 'card-subtitle mb-2 text-muted';
+                            originalTitle.textContent = '原始图像';
+                            
+                            const fileInfo = document.createElement('p');
+                            fileInfo.className = 'text-muted small';
+                            fileInfo.textContent = `${file.name} (${img.width}×${img.height})`;
+                            
+                            const originalCanvas = document.createElement('canvas');
+                            originalCanvas.className = 'img-fluid rounded';
+                            originalCanvas.id = `original-canvas-${index}`;
+                            originalCanvas.width = img.width;
+                            originalCanvas.height = img.height;
+                            
+                            // 绘制原始图像
+                            const ctx = originalCanvas.getContext('2d');
+                            ctx.drawImage(img, 0, 0, img.width, img.height);
+                            
+                            // 点击预览
+                            originalCanvas.style.cursor = 'pointer';
+                            originalCanvas.addEventListener('click', () => {
+                                modalImage.src = originalCanvas.toDataURL();
+                                imageModal.show();
+                            });
+                            
+                            // 处理结果列
+                            const processedCol = document.createElement('div');
+                            processedCol.className = 'col-md-6';
+                            
+                            const processedTitle = document.createElement('h6');
+                            processedTitle.className = 'card-subtitle mb-2 text-muted';
+                            processedTitle.textContent = '处理结果';
+                            
+                            const processedCanvas = document.createElement('canvas');
+                            processedCanvas.className = 'img-fluid rounded';
+                            processedCanvas.id = `processed-canvas-${index}`;
+                            processedCanvas.width = img.width;
+                            processedCanvas.height = img.height;
+                            
+                            // 点击预览
+                            processedCanvas.style.cursor = 'pointer';
+                            processedCanvas.addEventListener('click', () => {
+                                modalImage.src = processedCanvas.toDataURL();
+                                imageModal.show();
+                            });
+                            
+                            // 操作按钮
+                            const btnGroup = document.createElement('div');
+                            btnGroup.className = 'd-flex gap-2 mt-2';
+                            
+                            const processBtn = document.createElement('button');
+                            processBtn.className = 'btn btn-sm btn-outline-primary';
+                            processBtn.textContent = '处理';
+                            processBtn.dataset.index = index;
+                            processBtn.addEventListener('click', () => processImage(uploadedImages[index]));
+                            
+                            const downloadBtn = document.createElement('button');
+                            downloadBtn.className = 'btn btn-sm btn-outline-success';
+                            downloadBtn.textContent = '下载';
+                            downloadBtn.dataset.index = index;
+                            downloadBtn.addEventListener('click', () => {
+                                downloadImage(processedCanvas, file.name);
+                            });
+                            
+                            // 组装DOM
+                            originalCol.appendChild(originalTitle);
+                            originalCol.appendChild(fileInfo);
+                            originalCol.appendChild(originalCanvas);
+                            
+                            processedCol.appendChild(processedTitle);
+                            processedCol.appendChild(processedCanvas);
+                            processedCol.appendChild(btnGroup);
+                            
+                            btnGroup.appendChild(processBtn);
+                            btnGroup.appendChild(downloadBtn);
+                            
+                            row.appendChild(originalCol);
+                            row.appendChild(processedCol);
+                            
+                            cardBody.appendChild(row);
+                            container.appendChild(cardBody);
+                            resultsContainer.appendChild(container);
+                            
+                            // 存储原始图像
+                            uploadedImages.push({
+                                index: index,
+                                image: img,
+                                canvas: originalCanvas,
+                                file: file
+                            });
+                            
+                            // 更新进度
+                            progressBar.style.width = `${(uploadedImages.length / files.length) * 100}%`;
+                            progressText.textContent = `加载图片中 (${uploadedImages.length}/${files.length})`;
+                            
+                            // 如果所有图片都加载完成，隐藏进度条
+                            if (uploadedImages.length === files.length) {
+                                progressContainer.style.display = 'none';
+                                
+                                // 根据文件数量显示相应按钮
+                                if (files.length > 1) {
+                                    processBtn.style.display = 'none';
+                                    processAllBtn.style.display = 'inline-block';
+                                    processAllBtn.disabled = false;
+                                } else {
+                                    processBtn.style.display = 'inline-block';
+                                    processAllBtn.style.display = 'none';
+                                }
+                            }
+                        };
+                        img.src = event.target.result;
+                    };
+                    reader.readAsDataURL(file);
+                });
+            }
+            
+            // 处理方法选择
+            processingMethod.addEventListener('change', function() {
+                if (this.value === 'custom') {
+                    customParams.style.display = 'block';
+                } else {
+                    customParams.style.display = 'none';
+                }
+            });
+            
+            // 处理单个图像
+            processBtn.addEventListener('click', function() {
+                if (uploadedImages.length === 0) {
+                    alert('请先上传图像');
+                    return;
+                }
+                
+                // 只处理第一个图像
+                processImage(uploadedImages[0]);
+            });
+            
+            // 批量处理
+            processAllBtn.addEventListener('click', function() {
+                if (uploadedImages.length === 0) {
+                    alert('请先上传图像');
+                    return;
+                }
+                
+                // 显示进度条
+                progressContainer.style.display = 'block';
+                progressBar.style.width = '0%';
+                progressText.textContent = `处理中 (0/${uploadedImages.length})`;
+                
+                // 禁用按钮
+                processAllBtn.disabled = true;
+                processBtn.disabled = true;
+                
+                // 处理每个图像
+                let processedCount = 0;
+                
+                function processNextImage(index) {
+                    if (index >= uploadedImages.length) {
+                        // 所有图像处理完成
+                        progressContainer.style.display = 'none';
+                        processAllBtn.disabled = false;
+                        processBtn.disabled = false;
+                        downloadAllContainer.style.display = 'block';
+                        return;
+                    }
+                    
+                    processImage(uploadedImages[index], function() {
+                        processedCount++;
+                        progressBar.style.width = `${(processedCount / uploadedImages.length) * 100}%`;
+                        progressText.textContent = `处理中 (${processedCount}/${uploadedImages.length})`;
+                        
+                        // 处理下一个图像
+                        setTimeout(() => processNextImage(index + 1), 0);
+                    });
+                }
+                
+                // 开始处理
+                processNextImage(0);
+            });
+            
+            // 重置
+            resetBtn.addEventListener('click', function() {
+                // 清空所有内容
+                resultsContainer.innerHTML = '';
+                uploadedImages = [];
+                processedImages = [];
+                imageInput.value = '';
+                downloadAllContainer.style.display = 'none';
+                progressContainer.style.display = 'none';
+                
+                // 重置按钮状态
+                processBtn.style.display = 'inline-block';
+                processAllBtn.style.display = 'none';
+                processAllBtn.disabled = false;
+                processBtn.disabled = false;
+            });
+            
+            // 下载全部
+            downloadAllBtn.addEventListener('click', function() {
+                if (processedImages.length === 0) {
+                    alert('没有可下载的处理结果');
+                    return;
+                }
+                
+                // 在实际应用中，这里应该使用JSZip等库创建一个ZIP文件
+                alert('在实际应用中，这里应该使用JSZip等库创建一个ZIP文件包含所有处理后的图片。\n由于这是一个演示，将逐个下载每张图片。');
+                
+                processedImages.forEach(item => {
+                    const canvas = document.getElementById(`processed-canvas-${item.index}`);
+                    if (canvas) {
+                        setTimeout(() => {
+                            downloadImage(canvas, item.file.name);
+                        }, 0);
+                    }
+                });
+            });
+            
+            // 下载模态框中的图像
+            downloadModalImageBtn.addEventListener('click', function() {
+                if (modalImage.src) {
+                    const link = document.createElement('a');
+                    link.download = 'processed-image.png';
+                    link.href = modalImage.src;
+                    link.click();
+                }
+            });
+            
+            // 图像处理函数
+            function processImage(imageData, callback) {
+                if (!imageData) return;
+                
+                const method = processingMethod.value;
+                const canvas = document.getElementById(`processed-canvas-${imageData.index}`);
+                const ctx = canvas.getContext('2d');
+                
+                // 在实际应用中，这里应该使用OpenCV.js进行图像处理
+                // 以下是模拟处理效果
+                
+                // 先绘制原始图像
+                ctx.drawImage(imageData.image, 0, 0, canvas.width, canvas.height);
+                
+                // 根据选择的方法应用不同的效果
+                switch(method) {
+                    case 'grayscale':
+                        applyGrayscale(ctx, canvas);
+                        break;
+                    case 'canny':
+                        // 模拟Canny边缘检测
+                        applyGrayscale(ctx, canvas);
+                        setTimeout(() => {
+                            applyEdgeDetection(ctx, canvas);
+                            finishProcessing(imageData, callback);
+                        }, 500);
+                        return;
+                    case 'blur':
+                        applyBlur(ctx, canvas);
+                        break;
+                    case 'threshold':
+                        applyThreshold(ctx, canvas);
+                        break;
+                    case 'sobel':
+                        applySobel(ctx, canvas);
+                        break;
+                    case 'custom':
+                        applyCustomEffect(ctx, canvas);
+                        break;
+                    default:
+                        // 默认不做处理
+                        break;
+                }
+                
+                finishProcessing(imageData, callback);
+            }
+            
+            function finishProcessing(imageData, callback) {
+                // 存储处理结果
+                const existingIndex = processedImages.findIndex(img => img.index === imageData.index);
+                if (existingIndex >= 0) {
+                    processedImages[existingIndex] = imageData;
+                } else {
+                    processedImages.push(imageData);
+                }
+                
+                if (callback) callback();
+            }
+            
+            // 以下是模拟的图像处理函数
+            function applyGrayscale(ctx, canvas) {
+                const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                const data = imageData.data;
+                
+                for (let i = 0; i < data.length; i += 4) {
+                    const avg = (data[i] + data[i + 1] + data[i + 2]) / 3;
+                    data[i] = avg;     // R
+                    data[i + 1] = avg; // G
+                    data[i + 2] = avg; // B
+                }
+                
+                ctx.putImageData(imageData, 0, 0);
+            }
+            
+            function applyEdgeDetection(ctx, canvas) {
+                const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                const data = imageData.data;
+                
+                // 简单的边缘检测模拟
+                for (let i = 0; i < data.length; i += 4) {
+                    const brightness = (data[i] + data[i + 1] + data[i + 2]) / 3;
+                    const edge = brightness > 128 ? 255 : 0;
+                    data[i] = edge;     // R
+                    data[i + 1] = edge; // G
+                    data[i + 2] = edge; // B
+                }
+                
+                ctx.putImageData(imageData, 0, 0);
+            }
+            
+            function applyBlur(ctx, canvas) {
+                // 简单的模糊效果
+                ctx.filter = 'blur(4px)';
+                ctx.drawImage(canvas, 0, 0);
+                ctx.filter = 'none';
+            }
+            
+            function applyThreshold(ctx, canvas) {
+                const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                const data = imageData.data;
+                
+                for (let i = 0; i < data.length; i += 4) {
+                    const avg = (data[i] + data[i + 1] + data[i + 2]) / 3;
+                    const threshold = avg > 128 ? 255 : 0;
+                    data[i] = threshold;     // R
+                    data[i + 1] = threshold; // G
+                    data[i + 2] = threshold; // B
+                }
+                
+                ctx.putImageData(imageData, 0, 0);
+            }
+            
+            function applySobel(ctx, canvas) {
+                // 简单的Sobel效果模拟
+                applyGrayscale(ctx, canvas);
+                
+                const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                const data = imageData.data;
+                
+                for (let i = 0; i < data.length; i += 4) {
+                    const brightness = data[i];
+                    const edge = brightness > 150 ? 255 : 0;
+                    data[i] = edge;     // R
+                    data[i + 1] = edge; // G
+                    data[i + 2] = edge; // B
+                }
+                
+                ctx.putImageData(imageData, 0, 0);
+            }
+            
+            function applyCustomEffect(ctx, canvas) {
+                const param1 = parseInt(document.getElementById('param1').value) / 100;
+                const param2 = parseInt(document.getElementById('param2').value) / 100;
+                
+                const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                const data = imageData.data;
+                
+                for (let i = 0; i < data.length; i += 4) {
+                    // 使用参数创建自定义效果
+                    data[i] = data[i] * param1;     // R
+                    data[i + 1] = data[i + 1] * param2; // G
+                    data[i + 2] = (data[i] + data[i + 1]) / 2; // B
+                }
+                
+                ctx.putImageData(imageData, 0, 0);
+            }
+            
+            // 下载图像
+            function downloadImage(canvas, filename) {
+                if (!canvas || !filename) return;
+                
+                const link = document.createElement('a');
+                link.download = filename.replace(/\.[^/.]+$/, '') + '-processed.png';
+                link.href = canvas.toDataURL('image/png');
+                link.click();
+            }
+            
+            // 初始化OpenCV.js
+            function initOpenCV() {
+                console.log('Loading OpenCV.js...');
+                
+                // OpenCV.js已经通过CDN加载
+                cv.onRuntimeInitialized = function() {
+                    console.log('OpenCV.js is ready');
+                };
+            }
+            
+            initOpenCV();
+        });
+    </script>
+</body>
+</html>

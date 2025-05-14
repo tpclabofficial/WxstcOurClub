@@ -1,0 +1,744 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>时间碎片Lab-视频分析工具</title>
+    <style>
+        :root {
+            --primary: #00a8ff;
+            --primary-dark: #0097e6;
+            --secondary: #353b48;
+            --success: #4cd137;
+            --danger: #e84118;
+            --light: #f5f6fa;
+            --dark: #2f3640;
+            --cyber-blue: #00fffc;
+            --cyber-pink: #fc00ff;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: var(--dark);
+            color: var(--light);
+            line-height: 1.6;
+        }
+        
+        h2 {
+            color: var(--cyber-blue);
+            text-align: center;
+            margin-bottom: 30px;
+            font-weight: 300;
+            letter-spacing: 1px;
+            position: relative;
+            padding-bottom: 15px;
+        }
+        
+        h2::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 100px;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--cyber-blue), transparent);
+        }
+        
+        .video-controls {
+            background: rgba(53, 59, 72, 0.7);
+            padding: 25px;
+            border-radius: 8px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+            margin-bottom: 30px;
+            border: 1px solid rgba(0, 255, 252, 0.1);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .video-controls::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(
+                90deg,
+                transparent,
+                rgba(0, 255, 252, 0.1),
+                transparent
+            );
+            transition: 0.5s;
+        }
+        
+        .video-controls:hover::before {
+            left: 100%;
+        }
+        
+        .file-upload {
+            margin-bottom: 20px;
+            position: relative;
+        }
+        
+        .upload-btn {
+            display: inline-block;
+            padding: 12px 25px;
+            background: var(--primary);
+            color: white;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-weight: 500;
+            letter-spacing: 0.5px;
+            box-shadow: 0 2px 10px rgba(0, 168, 255, 0.3);
+            border: none;
+        }
+        
+        .upload-btn:hover {
+            background: var(--primary-dark);
+            box-shadow: 0 4px 15px rgba(0, 168, 255, 0.4);
+            transform: translateY(-2px);
+        }
+        
+        #video-preview {
+            max-width: 100%;
+            max-height: 200px;
+            display: none;
+            margin: 20px 0;
+            background: #000;
+            border-radius: 4px;
+            box-shadow: 0 0 20px rgba(0, 255, 252, 0.2);
+        }
+        
+        .status-container {
+            min-height: 40px;
+            margin: 15px 0;
+        }
+        
+        .error-message {
+            display: none;
+            padding: 12px;
+            background: rgba(232, 65, 24, 0.2);
+            color: #ff6b6b;
+            border-radius: 4px;
+            margin: 15px 0;
+            border-left: 3px solid var(--danger);
+            font-size: 14px;
+        }
+        
+        .processing-controls {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            align-items: center;
+            margin-top: 25px;
+        }
+        
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-weight: 500;
+            letter-spacing: 0.5px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+        
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            box-shadow: none;
+        }
+        
+        .primary {
+            background: var(--success);
+            color: white;
+        }
+        
+        .primary:hover:not(:disabled) {
+            background: #44bd32;
+            box-shadow: 0 4px 10px rgba(76, 175, 80, 0.4);
+            transform: translateY(-2px);
+        }
+        
+        .danger {
+            background: var(--danger);
+            color: white;
+        }
+        
+        .danger:hover:not(:disabled) {
+            background: #c23616;
+            box-shadow: 0 4px 10px rgba(244, 67, 54, 0.4);
+            transform: translateY(-2px);
+        }
+        
+        .secondary {
+            background: var(--secondary);
+            color: white;
+        }
+        
+        .secondary:hover:not(:disabled) {
+            background: #2f3640;
+            box-shadow: 0 4px 10px rgba(47, 54, 64, 0.4);
+            transform: translateY(-2px);
+        }
+        
+        #method-select {
+            padding: 10px 15px;
+            border: 1px solid rgba(0, 255, 252, 0.3);
+            border-radius: 4px;
+            min-width: 200px;
+            background: rgba(0, 0, 0, 0.3);
+            color: white;
+            font-size: 14px;
+            appearance: none;
+            background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='white'%3e%3cpath d='M7 10l5 5 5-5z'/%3e%3c/svg%3e");
+            background-repeat: no-repeat;
+            background-position: right 10px center;
+            background-size: 12px;
+        }
+        
+        #method-select:focus {
+            outline: none;
+            border-color: var(--cyber-blue);
+            box-shadow: 0 0 0 2px rgba(0, 255, 252, 0.2);
+        }
+        
+        .video-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 25px;
+        }
+        
+        @media (max-width: 768px) {
+            .video-container {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        .original, .processed {
+            background: rgba(47, 54, 64, 0.7);
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(0, 255, 252, 0.1);
+        }
+        
+        h3 {
+            margin-top: 0;
+            color: var(--cyber-blue);
+            padding-bottom: 10px;
+            border-bottom: 1px solid rgba(0, 255, 252, 0.3);
+            font-weight: 400;
+            letter-spacing: 0.5px;
+        }
+        
+        #source-video, #output-canvas {
+            width: 100%;
+            background: #000;
+            border-radius: 4px;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+        }
+        
+        #processing-info {
+            margin-top: 15px;
+            font-size: 14px;
+            color: #a4b0be;
+            padding: 10px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 4px;
+            border-left: 3px solid var(--primary);
+        }
+        
+        .stats {
+            display: flex;
+            gap: 15px;
+            margin-top: 15px;
+            font-size: 14px;
+            flex-wrap: wrap;
+        }
+        
+        progress {
+            width: 100%;
+            height: 8px;
+            border-radius: 4px;
+            margin-top: 15px;
+            appearance: none;
+            border: none;
+            background: rgba(0, 0, 0, 0.3);
+        }
+        
+        progress::-webkit-progress-bar {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 4px;
+        }
+        
+        progress::-webkit-progress-value {
+            background: linear-gradient(90deg, var(--cyber-blue), var(--cyber-pink));
+            border-radius: 4px;
+        }
+        
+        /* 添加一些科技感元素 */
+        .cyber-corner {
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            border: 2px solid var(--cyber-blue);
+        }
+        
+        .corner-tl {
+            top: 0;
+            left: 0;
+            border-right: none;
+            border-bottom: none;
+        }
+        
+        .corner-tr {
+            top: 0;
+            right: 0;
+            border-left: none;
+            border-bottom: none;
+        }
+        
+        .corner-bl {
+            bottom: 0;
+            left: 0;
+            border-right: none;
+            border-top: none;
+        }
+        
+        .corner-br {
+            bottom: 0;
+            right: 0;
+            border-left: none;
+            border-top: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>时间碎片Lab-视频分析工具</h2>
+        
+        <div class="video-controls">
+            <div class="cyber-corner corner-tl"></div>
+            <div class="cyber-corner corner-tr"></div>
+            <div class="cyber-corner corner-bl"></div>
+            <div class="cyber-corner corner-br"></div>
+            
+            <div class="file-upload">
+                <label for="video-input" class="upload-btn">
+                    <span id="file-name">选择视频文件</span>
+                    <input type="file" id="video-input" accept="video/*" style="display:none;">
+                </label>
+            </div>
+            
+            <video id="video-preview" controls></video>
+            
+            <div class="status-container">
+                <div class="error-message" id="error-message"></div>
+            </div>
+            
+            <div class="processing-controls">
+                <select id="method-select">
+                    <option value="motion">运动检测</option>
+                    <option value="color">颜色追踪</option>
+                    <option value="edge">边缘检测</option>
+                </select>
+                
+                <button id="start-btn" class="btn primary" disabled>开始分析</button>
+                <button id="stop-btn" class="btn danger" disabled>停止</button>
+                <button id="reset-btn" class="btn secondary">重置</button>
+            </div>
+        </div>
+        
+        <div class="video-container">
+            <div class="original">
+                <h3>原始视频</h3>
+                <video id="source-video" muted playsinline></video>
+            </div>
+            <div class="processed">
+                <h3>分析结果</h3>
+                <canvas id="output-canvas"></canvas>
+                <div id="processing-info">请选择视频文件并开始分析</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 使用更简单的Tracking.js库 -->
+    <script src="https://cdn.jsdelivr.net/npm/tracking@1.1.3/build/tracking-min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/tracking@1.1.3/build/data/face-min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/tracking@1.1.3/build/data/eye-min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/tracking@1.1.3/build/data/mouth-min.js"></script>
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // 初始化元素引用
+            const videoInput = document.getElementById('video-input');
+            const videoPreview = document.getElementById('video-preview');
+            const sourceVideo = document.getElementById('source-video');
+            const outputCanvas = document.getElementById('output-canvas');
+            const ctx = outputCanvas.getContext('2d');
+            const startBtn = document.getElementById('start-btn');
+            const stopBtn = document.getElementById('stop-btn');
+            const resetBtn = document.getElementById('reset-btn');
+            const methodSelect = document.getElementById('method-select');
+            const errorMessage = document.getElementById('error-message');
+            const fileNameSpan = document.getElementById('file-name');
+            const processingInfo = document.getElementById('processing-info');
+            
+            // 状态变量
+            let isProcessing = false;
+            let animationId = null;
+            let tracker = null;
+            let prevFrameData = null;
+            
+            // 视频文件选择处理
+            videoInput.addEventListener('change', function(e) {
+                const file = e.target.files[0];
+                if (!file) return;
+                
+                resetProcessing();
+                fileNameSpan.textContent = file.name;
+                hideError();
+                startBtn.disabled = true;
+                
+                try {
+                    const videoUrl = URL.createObjectURL(file);
+                    
+                    // 重置视频元素
+                    sourceVideo.src = '';
+                    sourceVideo.load();
+                    
+                    // 设置新的视频源
+                    sourceVideo.src = videoUrl;
+                    
+                    // 等待视频元数据加载完成
+                    sourceVideo.onloadedmetadata = function() {
+                        if (sourceVideo.videoWidth > 0 && sourceVideo.videoHeight > 0) {
+                            // 设置Canvas尺寸
+                            outputCanvas.width = sourceVideo.videoWidth;
+                            outputCanvas.height = sourceVideo.videoHeight;
+                            ctx.clearRect(0, 0, outputCanvas.width, outputCanvas.height);
+                            
+                            // 设置预览视频
+                            videoPreview.src = videoUrl;
+                            videoPreview.style.display = 'block';
+                            
+                            startBtn.disabled = false;
+                            updateProcessingInfo('视频已加载，点击"开始分析"进行处理');
+                        } else {
+                            showError('获取视频尺寸失败');
+                        }
+                    };
+                    
+                    sourceVideo.onerror = function() {
+                        showError('视频加载错误');
+                    };
+                    
+                } catch (error) {
+                    showError(`视频加载错误: ${error.message || '未知错误'}`);
+                    console.error('视频加载失败:', error);
+                }
+            });
+            
+            // 开始处理
+            startBtn.addEventListener('click', function() {
+                if (!sourceVideo.src) {
+                    showError('请先选择视频文件');
+                    return;
+                }
+                
+                isProcessing = true;
+                startBtn.disabled = true;
+                stopBtn.disabled = false;
+                
+                // 初始化追踪器
+                initTracker(methodSelect.value);
+                
+                try {
+                    // 尝试播放视频
+                    sourceVideo.play();
+                    
+                    // 开始处理帧
+                    processFrame();
+                } catch (error) {
+                    console.error('视频播放失败:', error);
+                    showError(`视频播放失败: ${error.message || '请确保浏览器允许自动播放'}`);
+                    stopProcessing();
+                }
+            });
+            
+            // 停止处理
+            stopBtn.addEventListener('click', stopProcessing);
+            
+            // 重置
+            resetBtn.addEventListener('click', resetProcessing);
+            
+            // 初始化追踪器
+            function initTracker(method) {
+                cleanupTracker();
+                
+                switch (method) {
+                    case 'motion':
+                        updateProcessingInfo('使用运动检测');
+                        break;
+                    case 'color':
+                        tracker = new tracking.ColorTracker(['magenta', 'cyan', 'yellow']);
+                        tracker.on('track', handleColorTracking);
+                        updateProcessingInfo('使用颜色追踪');
+                        break;
+                    case 'edge':
+                        updateProcessingInfo('使用边缘检测');
+                        break;
+                }
+            }
+            
+            // 处理颜色追踪结果
+            function handleColorTracking(event) {
+                ctx.clearRect(0, 0, outputCanvas.width, outputCanvas.height);
+                
+                event.data.forEach(function(rect) {
+                    ctx.strokeStyle = rect.color;
+                    ctx.strokeRect(rect.x, rect.y, rect.width, rect.height);
+                    ctx.font = '11px Helvetica';
+                    ctx.fillStyle = "#fff";
+                    ctx.fillText('x: ' + rect.x + 'px', rect.x + rect.width + 5, rect.y + 11);
+                    ctx.fillText('y: ' + rect.y + 'px', rect.x + rect.width + 5, rect.y + 22);
+                });
+            }
+            
+            // 处理视频帧
+            function processFrame() {
+                if (!isProcessing) return;
+                
+                // 检查视频状态和尺寸
+                if (sourceVideo.readyState < 2 || sourceVideo.videoWidth === 0) {
+                    stopProcessing();
+                    showError('视频源不可用');
+                    return;
+                }
+                
+                try {
+                    // 确保Canvas尺寸正确
+                    if (outputCanvas.width !== sourceVideo.videoWidth || 
+                        outputCanvas.height !== sourceVideo.videoHeight) {
+                        outputCanvas.width = sourceVideo.videoWidth;
+                        outputCanvas.height = sourceVideo.videoHeight;
+                    }
+                    
+                    // 处理方法
+                    switch (methodSelect.value) {
+                        case 'motion':
+                            processMotionDetection();
+                            break;
+                        case 'color':
+                            tracking.track(sourceVideo, tracker);
+                            break;
+                        case 'edge':
+                            processEdgeDetection();
+                            break;
+                    }
+                    
+                    // 继续下一帧
+                    if (!sourceVideo.ended && isProcessing) {
+                        animationId = requestAnimationFrame(processFrame);
+                    } else {
+                        stopProcessing();
+                        updateProcessingInfo('视频处理完成');
+                    }
+                    
+                } catch (error) {
+                    console.error('帧处理错误:', error);
+                    stopProcessing();
+                    showError(`处理失败: ${error.message || '未知错误'}`);
+                }
+            }
+            
+            // 运动检测处理
+            function processMotionDetection() {
+                // 绘制当前帧
+                ctx.drawImage(sourceVideo, 0, 0, outputCanvas.width, outputCanvas.height);
+                
+                // 简单的运动检测
+                if (prevFrameData) {
+                    const currentFrameData = ctx.getImageData(0, 0, outputCanvas.width, outputCanvas.height);
+                    const diff = detectMotion(prevFrameData.data, currentFrameData.data);
+                    
+                    // 应用差异
+                    const diffImageData = new ImageData(diff, outputCanvas.width, outputCanvas.height);
+                    ctx.putImageData(diffImageData, 0, 0);
+                    
+                    // 保存当前帧用于下次比较
+                    prevFrameData = currentFrameData;
+                } else {
+                    // 保存第一帧
+                    prevFrameData = ctx.getImageData(0, 0, outputCanvas.width, outputCanvas.height);
+                }
+            }
+            
+            // 检测运动差异
+            function detectMotion(prevData, currData) {
+                const diff = new Uint8ClampedArray(prevData.length);
+                const threshold = 30;
+                
+                for (let i = 0; i < prevData.length; i += 4) {
+                    // 计算RGB通道差异
+                    const rDiff = Math.abs(prevData[i] - currData[i]);
+                    const gDiff = Math.abs(prevData[i+1] - currData[i+1]);
+                    const bDiff = Math.abs(prevData[i+2] - currData[i+2]);
+                    
+                    // 如果任一通道差异超过阈值，则标记为运动
+                    if (rDiff > threshold || gDiff > threshold || bDiff > threshold) {
+                        diff[i] = 255;   // R
+                        diff[i+1] = 255; // G
+                        diff[i+2] = 255; // B
+                        diff[i+3] = 255; // A
+                    } else {
+                        diff[i] = 0;     // R
+                        diff[i+1] = 0;   // G
+                        diff[i+2] = 0;   // B
+                        diff[i+3] = 255; // A
+                    }
+                }
+                
+                return diff;
+            }
+            
+            // 边缘检测处理
+            function processEdgeDetection() {
+                // 绘制当前帧
+                ctx.drawImage(sourceVideo, 0, 0, outputCanvas.width, outputCanvas.height);
+                
+                // 获取图像数据
+                const imageData = ctx.getImageData(0, 0, outputCanvas.width, outputCanvas.height);
+                const edgeData = detectEdges(imageData.data, outputCanvas.width, outputCanvas.height);
+                
+                // 应用边缘检测结果
+                const edgeImageData = new ImageData(edgeData, outputCanvas.width, outputCanvas.height);
+                ctx.putImageData(edgeImageData, 0, 0);
+            }
+            
+            // Sobel边缘检测算法
+            function detectEdges(data, width, height) {
+                const output = new Uint8ClampedArray(data.length);
+                const grayscale = new Uint8ClampedArray(width * height);
+                
+                // 转换为灰度图像
+                for (let y = 0; y < height; y++) {
+                    for (let x = 0; x < width; x++) {
+                        const i = (y * width + x) * 4;
+                        grayscale[y * width + x] = 
+                            0.299 * data[i] + 
+                            0.587 * data[i+1] + 
+                            0.114 * data[i+2];
+                    }
+                }
+                
+                // Sobel算子
+                const sobelX = [-1, 0, 1, -2, 0, 2, -1, 0, 1];
+                const sobelY = [-1, -2, -1, 0, 0, 0, 1, 2, 1];
+                const threshold = 50;
+                
+                for (let y = 1; y < height - 1; y++) {
+                    for (let x = 1; x < width - 1; x++) {
+                        let gx = 0, gy = 0;
+                        
+                        // 应用Sobel算子
+                        for (let ky = -1; ky <= 1; ky++) {
+                            for (let kx = -1; kx <= 1; kx++) {
+                                const idx = (y + ky) * width + (x + kx);
+                                const kernelIdx = (ky + 1) * 3 + (kx + 1);
+                                
+                                gx += grayscale[idx] * sobelX[kernelIdx];
+                                gy += grayscale[idx] * sobelY[kernelIdx];
+                            }
+                        }
+                        
+                        // 计算梯度幅度
+                        const magnitude = Math.sqrt(gx * gx + gy * gy);
+                        const edgeValue = magnitude > threshold ? 255 : 0;
+                        
+                        // 设置输出像素
+                        const outIdx = (y * width + x) * 4;
+                        output[outIdx] = edgeValue;
+                        output[outIdx+1] = edgeValue;
+                        output[outIdx+2] = edgeValue;
+                        output[outIdx+3] = 255;
+                    }
+                }
+                
+                return output;
+            }
+            
+            // 停止处理
+            function stopProcessing() {
+                isProcessing = false;
+                sourceVideo.pause();
+                
+                if (animationId) {
+                    cancelAnimationFrame(animationId);
+                    animationId = null;
+                }
+                
+                startBtn.disabled = false;
+                stopBtn.disabled = true;
+                
+                updateProcessingInfo('处理已停止');
+            }
+            
+            // 重置处理
+            function resetProcessing() {
+                stopProcessing();
+                cleanupTracker();
+                
+                // 清除显示
+                ctx.clearRect(0, 0, outputCanvas.width, outputCanvas.height);
+                updateProcessingInfo('请选择视频文件并开始分析');
+                
+                // 重置视频源
+                videoPreview.src = '';
+                videoPreview.style.display = 'none';
+                sourceVideo.src = '';
+                
+                // 重置文件输入
+                videoInput.value = '';
+                fileNameSpan.textContent = '选择视频文件';
+                
+                // 更新按钮状态
+                startBtn.disabled = false;
+                hideError();
+            }
+            
+            // 清理追踪器
+            function cleanupTracker() {
+                if (tracker) {
+                    tracker.removeAllListeners();
+                    tracker = null;
+                }
+                
+                prevFrameData = null;
+            }
+            
+            // 更新处理信息
+            function updateProcessingInfo(text) {
+                processingInfo.textContent = text;
+            }
+            
+            // 显示错误
+            function showError(message) {
+                errorMessage.textContent = message;
+                errorMessage.style.display = 'block';
+            }
+            
+            function hideError() {
+                errorMessage.style.display = 'none';
+            }
+        });
+    </script>
+</body>
+</html>

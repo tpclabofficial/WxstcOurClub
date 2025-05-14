@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Laboratory Online Tools</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            overflow-x: hidden;
+            background: linear-gradient(135deg, #0f2027 0%, #203a43 50%, #2c5364 100%);
+            color: #f0f0f0;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            position: relative;
+            z-index: 1;
+        }
+
+        /* 动态光效背景 */
+        .background-glow {
+            position: fixed;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle at center, rgba(139, 92, 246, 0.15) 0%, transparent 60%);
+            animation: rotateGlow 30s linear infinite;
+            z-index: 0;
+        }
+
+        @keyframes rotateGlow {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* 颗粒化玻璃效果 */
+        .glass-overlay {
+            position: fixed;
+            width: 100%;
+            height: 100%;
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            z-index: 1;
+        }
+
+        /* 主要内容容器 */
+        .header {
+            margin-top: 60px;
+            text-align: center;
+            z-index: 3;
+            padding: 0 20px;
+        }
+
+        .header h1 {
+            font-size: 4rem;
+            margin: 0;
+            background: linear-gradient(90deg, #6e8efb 0%, #a777e3 100%);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            text-shadow: 0 0 20px rgba(102, 126, 234, 0.3);
+            animation: textGlow 2s infinite alternate;
+        }
+
+        @keyframes textGlow {
+            from { text-shadow: 0 0 10px rgba(102, 126, 234, 0.5); }
+            to { text-shadow: 0 0 25px rgba(102, 126, 234, 0.9); }
+        }
+
+        /* 工具卡片容器 */
+        .main-container {
+            width: 90%;
+            max-width: 1300px;
+            margin: 60px auto;
+            border-radius: 25px;
+            overflow: hidden;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+            z-index: 3;
+            position: relative;
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        /* 卡片滑动容器 */
+        .slider-container {
+            position: relative;
+            width: 100%;
+            height: 600px;
+            overflow: hidden;
+            perspective: 1500px;
+        }
+
+        .slider {
+            display: flex;
+            width: 400%;
+            height: 100%;
+            transition: transform 1s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .slide {
+            width: 25%;
+            height: 100%;
+            position: relative;
+            overflow: hidden;
+            transform-style: preserve-3d;
+            transition: transform 0.5s ease;
+        }
+
+        .slide img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: transform 0.7s cubic-bezier(0.4, 0, 0.2, 1);
+            will-change: transform;
+        }
+
+        /* 悬停放大效果 */
+        .slide:hover img {
+            transform: scale(1.1) rotate(1deg);
+        }
+
+        /* 三维卡片效果 */
+        .slide::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: linear-gradient(transparent 25%, rgba(0,0,0,0.6));
+            pointer-events: none;
+            z-index: 2;
+        }
+
+        /* 内容浮层 */
+        .slide-content {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            padding: 30px;
+            background: linear-gradient(to top, rgba(15, 15, 35, 0.95), transparent);
+            color: #fff;
+            transform: translateY(30px);
+            opacity: 0;
+            transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 3;
+        }
+
+        .slide:hover .slide-content {
+            transform: translateY(0);
+            opacity: 1;
+        }
+
+        .slide-content h2 {
+            margin: 0 0 15px 0;
+            font-size: 2.2rem;
+            color: #fff;
+            text-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+            background: linear-gradient(90deg, #ff6ec4, #7873f5);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+
+        .slide-content p {
+            margin: 0;
+            font-size: 1.1rem;
+            line-height: 1.6;
+            color: #e0e0e0;
+            text-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+        }
+
+        /* 分页导航 */
+        .slider-nav {
+            display: flex;
+            justify-content: center;
+            padding: 30px 0;
+            background: rgba(255, 255, 255, 0.03);
+            z-index: 4;
+        }
+
+        .slider-dot {
+            width: 14px;
+            height: 14px;
+            margin: 0 6px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.2);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .slider-dot::before {
+            content: '';
+            position: absolute;
+            top: -4px;
+            left: -4px;
+            right: -4px;
+            bottom: -4px;
+            border-radius: 50%;
+            opacity: 0;
+            transition: all 0.3s ease;
+        }
+
+        .slider-dot.active,
+        .slider-dot:hover {
+            background: #ff6ec4;
+            transform: scale(1.3);
+            box-shadow: 0 0 10px #ff6ec4;
+        }
+
+        .slider-dot.active::before {
+            opacity: 1;
+            background: radial-gradient(circle, #ff6ec4 0%, transparent 70%);
+        }
+
+        /* 链接覆盖层 */
+        .slide-link {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 2;
+            transition: background 0.3s ease;
+        }
+
+        .slide-link:hover {
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        /* 光标特效 */
+        .cursor-glow {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: 9999;
+            mix-blend-mode: difference;
+            background: radial-gradient(circle, #ffffff 0%, transparent 70%);
+            opacity: 0.4;
+            transform: translate(-50%, -50%);
+            transition: all 0.1s ease-out;
+        }
+
+        /* 响应式调整 */
+        @media (max-width: 1200px) {
+            .header h1 { font-size: 3rem; }
+            .slide-content h2 { font-size: 1.8rem; }
+        }
+
+        @media (max-width: 900px) {
+            .header h1 { font-size: 2.5rem; }
+            .slide { height: 500px; }
+        }
+
+        @media (max-width: 768px) {
+            .slide-content { padding: 20px; }
+            .slide-content h2 { font-size: 1.5rem; }
+        }
+    </style>
+</head>
+<body>
+    <!-- 动态背景元素 -->
+    <div class="background-glow"></div>
+    <div class="glass-overlay"></div>
+
+    <!-- 光标特效 -->
+    <div class="cursor-glow" id="cursorGlow"></div>
+
+    <!-- 页面标题 -->
+    <div class="header">
+        <h1>Laboratory Online Tools</h1>
+    </div>
+
+    <!-- 主要内容 -->
+    <div class="main-container">
+        <div class="slider-container">
+            <div class="slider">
+                <!-- 数据分析工具 -->
+                <div class="slide">
+                    <img src="../asset/images/13.png" alt="数据分析图像处理工具">
+                    <a href="gui1.html" class="slide-link" target="_blank"></a>
+                    <div class="slide-content">
+                        <h2>数据分析图像处理工具</h2>
+                        <p>高级数据分析与可视化平台，支持多维数据处理、图像到曲线转换、批量图片压缩与重组，集成机器学习算法与交互式可视化界面。</p>
+                    </div>
+                </div>
+
+                <!-- 问小白AI -->
+                <div class="slide">
+                    <img src="../asset/images/14.png" alt="问小白DeepSeek满血版">
+                    <a href="https://www.wenxiaobai.com/chat/200006" class="slide-link" target="_blank"></a>
+                    <div class="slide-content">
+                        <h2>问小白DeepSeek满血版</h2>
+                        <p>接入尖端AI模型，支持双模型对比问答、智能文档解析和实时推理，提供对话式AI体验与知识探索功能。</p>
+                    </div>
+                </div>
+
+                <!-- 文本处理工具 -->
+                <div class="slide">
+                    <img src="../asset/images/6.png" alt="TPCLabAI图片视频高级处理">
+                    <a href="TpcAiTools.html" class="slide-link" target="_blank"></a>
+                    <div class="slide-content">
+                        <h2>文本处理工具</h2>
+                        <p>采用opencv.js等库实现对目标图片的特殊处理，对视频、视频帧中目标的锁定比对等功能</p>
+                    </div>
+                </div>
+
+                <!-- 学术资源库 -->
+                <div class="slide">
+                    <img src="../asset/images/16.png" alt="学校图书馆资源">
+                    <a href="https://login.wxibm.vpn358.com/" class="slide-link" target="_blank"></a>
+                    <div class="slide-content">
+                        <h2>学校图书馆资源</h2>
+                        <p>学术资源门户，提供CNKI等数据库的免费论文下载，集成全球学术期刊检索系统，支持跨库文献传递服务。</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 导航分页 -->
+        <div class="slider-nav">
+            <div class="slider-dot active" data-slide="0"></div>
+            <div class="slider-dot" data-slide="1"></div>
+            <div class="slider-dot" data-slide="2"></div>
+            <div class="slider-dot" data-slide="3"></div>
+        </div>
+    </div>
+
+    <!-- JavaScript交互 -->
+    <script>
+        // 光标跟踪效果
+        const cursor = document.getElementById('cursorGlow');
+        document.addEventListener('mousemove', e => {
+            cursor.style.left = e.clientX + 'px';
+            cursor.style.top = e.clientY + 'px';
+        });
+
+        // 幻灯片控制
+        let currentSlide = 0;
+        const slides = document.querySelectorAll('.slide');
+        const dots = document.querySelectorAll('.slider-dot');
+        const slider = document.querySelector('.slider');
+        const totalSlides = slides.length;
+
+        function showSlide(index) {
+            if (index < 0) index = totalSlides - 1;
+            if (index >= totalSlides) index = 0;
+            
+            currentSlide = index;
+            slider.style.transform = `translateX(-${currentSlide * 25}%)`;
+            
+            dots.forEach((dot, i) => {
+                dot.classList.toggle('active', i === currentSlide);
+            });
+        }
+
+        // 自动播放
+        setInterval(() => {
+            showSlide(currentSlide + 1);
+        }, 3000);
+
+        // 点击导航
+        dots.forEach(dot => {
+            dot.addEventListener('click', function() {
+                const slideIndex = parseInt(this.getAttribute('data-slide'));
+                showSlide(slideIndex);
+            });
+        });
+    </script>
+</body>
+</html>

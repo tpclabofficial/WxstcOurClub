@@ -1,0 +1,1043 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>浏览器目标追踪与标注工具</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #0a0a1a;
+            color: #333;
+            overflow-x: hidden;
+            cursor: none;
+        }
+        
+        /* 星辰粒子特效 */
+        #starfield {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            pointer-events: none;
+        }
+        
+        /* 自定义鼠标光标 */
+        .cursor {
+            position: fixed;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: radial-gradient(circle, #4fc3f7 0%, #01579b 70%, transparent 71%);
+            box-shadow: 0 0 15px #4fc3f7, 0 0 30px #4fc3f7;
+            transform: translate(-50%, -50%);
+            pointer-events: none;
+            z-index: 9999;
+            mix-blend-mode: screen;
+            animation: pulse 2s infinite alternate;
+        }
+        
+        .cursor-follower {
+            position: fixed;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(79, 195, 247, 0.3) 0%, rgba(1, 87, 155, 0.1) 70%, transparent 71%);
+            box-shadow: 0 0 5px #4fc3f7;
+            transform: translate(-50%, -50%);
+            pointer-events: none;
+            z-index: 9998;
+            transition: transform 0.3s ease-out;
+        }
+        
+        @keyframes pulse {
+            0% { transform: translate(-50%, -50%) scale(1); opacity: 0.8; }
+            100% { transform: translate(-50%, -50%) scale(1.2); opacity: 1; }
+        }
+        
+        /* 星辰文字效果 */
+        .star-text {
+            background: linear-gradient(90deg, #4fc3f7, #01579b, #4fc3f7);
+            background-size: 200% auto;
+            color: transparent;
+            -webkit-background-clip: text;
+            background-clip: text;
+            animation: shine 3s linear infinite;
+        }
+        
+        @keyframes shine {
+            to { background-position: 200% center; }
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background-color: rgba(255, 255, 255, 0.9);
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            position: relative;
+            z-index: 1;
+            backdrop-filter: blur(5px);
+            border: 1px solid rgba(79, 195, 247, 0.3);
+        }
+        
+        h1 {
+            text-align: center;
+            color: #2c3e50;
+            margin-bottom: 30px;
+            font-size: 2.5em;
+            text-shadow: 0 0 10px rgba(79, 195, 247, 0.5);
+        }
+        
+        .upload-section {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-bottom: 20px;
+            padding: 15px;
+            background-color: rgba(240, 248, 255, 0.7);
+            border-radius: 5px;
+            border: 1px solid rgba(79, 195, 247, 0.3);
+        }
+        
+        .video-container {
+            position: relative;
+            margin-bottom: 20px;
+            background-color: #000;
+        }
+        
+        #videoCanvas {
+            display: block;
+            max-width: 100%;
+            cursor: none;
+            border-radius: 5px;
+            box-shadow: 0 0 20px rgba(79, 195, 247, 0.3);
+        }
+        
+        .controls {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin-bottom: 20px;
+            padding: 15px;
+            background-color: rgba(249, 249, 249, 0.7);
+            border-radius: 5px;
+            border: 1px solid rgba(79, 195, 247, 0.3);
+        }
+        
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+        
+        label {
+            font-weight: bold;
+            font-size: 14px;
+            color: #01579b;
+        }
+        
+        input, select, button {
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+        
+        button {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            cursor: pointer;
+            transition: all 0.3s;
+            position: relative;
+            overflow: hidden;
+            z-index: 1;
+        }
+        
+        button::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(79, 195, 247, 0.4), transparent);
+            transition: all 0.5s;
+            z-index: -1;
+        }
+        
+        button:hover::before {
+            left: 100%;
+        }
+        
+        button:hover {
+            background-color: #2980b9;
+            box-shadow: 0 0 10px rgba(79, 195, 247, 0.7);
+        }
+        
+        button.danger {
+            background-color: #e74c3c;
+        }
+        
+        button.danger:hover {
+            background-color: #c0392b;
+            box-shadow: 0 0 10px rgba(231, 76, 60, 0.7);
+        }
+        
+        button.success {
+            background-color: #2ecc71;
+        }
+        
+        button.success:hover {
+            background-color: #27ae60;
+            box-shadow: 0 0 10px rgba(46, 204, 113, 0.7);
+        }
+        
+        .tracking-boxes {
+            margin-top: 20px;
+            border-top: 1px solid #eee;
+            padding-top: 20px;
+        }
+        
+        .box-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        
+        .box-item {
+            padding: 10px;
+            background-color: #f0f0f0;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            transition: all 0.3s;
+        }
+        
+        .box-item:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+        
+        .box-color {
+            width: 20px;
+            height: 20px;
+            border-radius: 3px;
+        }
+        
+        .box-label {
+            font-weight: bold;
+        }
+        
+        .box-coords {
+            font-size: 12px;
+            color: #666;
+        }
+        
+        .status {
+            margin-top: 20px;
+            padding: 10px;
+            background-color: #e8f4f8;
+            border-radius: 4px;
+            font-size: 14px;
+            border-left: 4px solid #3498db;
+        }
+        
+        .hidden {
+            display: none;
+        }
+        
+        #motionCanvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            opacity: 0.3;
+            pointer-events: none;
+        }
+        
+        .canvas-container {
+            position: relative;
+        }
+    </style>
+</head>
+<body>
+    <!-- 星辰粒子背景 -->
+    <canvas id="starfield"></canvas>
+    
+    <!-- 自定义鼠标光标 -->
+    <div class="cursor"></div>
+    <div class="cursor-follower"></div>
+    
+    <div class="container">
+        <h1 class="star-text">浏览器目标追踪与标注工具</h1>
+        
+        <div class="upload-section">
+            <label for="mediaInput">上传图像或视频:</label>
+            <input type="file" id="mediaInput" accept="image/*,video/*">
+            <div class="control-group">
+                <label for="mediaType">选择媒体类型:</label>
+                <select id="mediaType">
+                    <option value="image">静态图像</option>
+                    <option value="video">视频</option>
+                    <option value="webcam">摄像头</option>
+                </select>
+            </div>
+            <button id="loadBtn">加载媒体</button>
+        </div>
+        
+        <div class="canvas-container">
+            <canvas id="videoCanvas"></canvas>
+            <canvas id="motionCanvas"></canvas>
+        </div>
+        
+        <div class="controls">
+            <div class="control-group">
+                <label for="boxColor">框线颜色:</label>
+                <input type="color" id="boxColor" value="#FF0000">
+            </div>
+            
+            <div class="control-group">
+                <label for="boxWidth">框线宽度:</label>
+                <input type="number" id="boxWidth" min="1" max="10" value="2">
+            </div>
+            
+            <div class="control-group">
+                <label for="boxLabel">标注标签:</label>
+                <input type="text" id="boxLabel" placeholder="输入标签">
+            </div>
+            
+            <div class="control-group">
+                <label for="boxId">目标ID:</label>
+                <input type="text" id="boxId" placeholder="自动生成">
+            </div>
+            
+            <div class="control-group">
+                <label>操作:</label>
+                <div style="display: flex; gap: 5px;">
+                    <button id="clearBtn">清除所有</button>
+                    <button id="exportBtn">导出标注</button>
+                    <button id="importBtn">导入标注</button>
+                </div>
+            </div>
+            
+            <div class="control-group">
+                <label>运动检测:</label>
+                <div style="display: flex; gap: 5px;">
+                    <button id="motionBtn">开启运动检测</button>
+                    <button id="trackMotionBtn">追踪运动物体</button>
+                </div>
+            </div>
+        </div>
+        
+        <div class="tracking-boxes">
+            <h3 class="star-text">当前追踪目标</h3>
+            <div id="boxList" class="box-list">
+                <p id="noBoxesMsg">暂无追踪目标，请在画面上拖动鼠标创建</p>
+            </div>
+        </div>
+        
+        <div class="status" id="status">
+            就绪。请上传媒体文件并开始标注。
+        </div>
+    </div>
+
+    <script>
+        // 全局变量
+        let video = null;
+        let canvas = document.getElementById('videoCanvas');
+        let ctx = canvas.getContext('2d');
+        let motionCanvas = document.getElementById('motionCanvas');
+        let motionCtx = motionCanvas.getContext('2d');
+        let isDrawing = false;
+        let startX, startY;
+        let trackingBoxes = [];
+        let currentBox = null;
+        let mediaType = 'image';
+        let videoStream = null;
+        let motionDetectionActive = false;
+        let trackMotionActive = false;
+        let lastFrame = null;
+        let animationId = null;
+        
+        // 星辰粒子变量
+        let stars = [];
+        const starCount = 200;
+        let starfield = document.getElementById('starfield');
+        let starCtx = starfield.getContext('2d');
+        
+        // 自定义鼠标变量
+        let cursor = document.querySelector('.cursor');
+        let cursorFollower = document.querySelector('.cursor-follower');
+        let mouseX = 0, mouseY = 0;
+        let followerX = 0, followerY = 0;
+        
+        // DOM元素
+        const mediaInput = document.getElementById('mediaInput');
+        const mediaTypeSelect = document.getElementById('mediaType');
+        const loadBtn = document.getElementById('loadBtn');
+        const boxColor = document.getElementById('boxColor');
+        const boxWidth = document.getElementById('boxWidth');
+        const boxLabel = document.getElementById('boxLabel');
+        const boxId = document.getElementById('boxId');
+        const clearBtn = document.getElementById('clearBtn');
+        const exportBtn = document.getElementById('exportBtn');
+        const importBtn = document.getElementById('importBtn');
+        const motionBtn = document.getElementById('motionBtn');
+        const trackMotionBtn = document.getElementById('trackMotionBtn');
+        const boxList = document.getElementById('boxList');
+        const noBoxesMsg = document.getElementById('noBoxesMsg');
+        const status = document.getElementById('status');
+        
+        // 初始化星辰粒子
+        function initStars() {
+            starfield.width = window.innerWidth;
+            starfield.height = window.innerHeight;
+            
+            stars = [];
+            for (let i = 0; i < starCount; i++) {
+                stars.push({
+                    x: Math.random() * starfield.width,
+                    y: Math.random() * starfield.height,
+                    radius: Math.random() * 1.5,
+                    vx: Math.random() * 0.2 - 0.1,
+                    vy: Math.random() * 0.2 + 0.1,
+                    alpha: Math.random()
+                });
+            }
+        }
+        
+        // 绘制星辰粒子
+        function drawStars() {
+            starCtx.clearRect(0, 0, starfield.width, starfield.height);
+            starCtx.fillStyle = 'rgba(79, 195, 247, 0.8)';
+            
+            stars.forEach(star => {
+                starCtx.beginPath();
+                starCtx.arc(star.x, star.y, star.radius, 0, Math.PI * 2);
+                starCtx.closePath();
+                starCtx.fill();
+                
+                // 更新位置
+                star.x += star.vx;
+                star.y += star.vy;
+                
+                // 重置离开屏幕的星星
+                if (star.x < 0 || star.x > starfield.width || star.y < 0 || star.y > starfield.height) {
+                    star.x = Math.random() * starfield.width;
+                    star.y = 0;
+                    star.radius = Math.random() * 1.5;
+                    star.vx = Math.random() * 0.2 - 0.1;
+                    star.vy = Math.random() * 0.2 + 0.1;
+                }
+            });
+            
+            requestAnimationFrame(drawStars);
+        }
+        
+        // 自定义鼠标移动
+        function moveCursor(e) {
+            mouseX = e.clientX;
+            mouseY = e.clientY;
+            cursor.style.left = mouseX + 'px';
+            cursor.style.top = mouseY + 'px';
+        }
+        
+        function moveCursorFollower() {
+            followerX += (mouseX - followerX) / 10;
+            followerY += (mouseY - followerY) / 10;
+            cursorFollower.style.left = followerX + 'px';
+            cursorFollower.style.top = followerY + 'px';
+            
+            requestAnimationFrame(moveCursorFollower);
+        }
+        
+        // 事件监听器
+        loadBtn.addEventListener('click', loadMedia);
+        mediaTypeSelect.addEventListener('change', () => {
+            mediaType = mediaTypeSelect.value;
+            if (mediaType === 'webcam') {
+                mediaInput.disabled = true;
+            } else {
+                mediaInput.disabled = false;
+            }
+        });
+        
+        canvas.addEventListener('mousedown', startDrawing);
+        canvas.addEventListener('mousemove', draw);
+        canvas.addEventListener('mouseup', endDrawing);
+        canvas.addEventListener('mouseout', endDrawing);
+        
+        clearBtn.addEventListener('click', clearAllBoxes);
+        exportBtn.addEventListener('click', exportAnnotations);
+        importBtn.addEventListener('click', importAnnotations);
+        motionBtn.addEventListener('click', toggleMotionDetection);
+        trackMotionBtn.addEventListener('click', toggleTrackMotion);
+        
+        // 鼠标移动事件
+        document.addEventListener('mousemove', moveCursor);
+        
+        // 初始化
+        function init() {
+            updateStatus('就绪。请上传媒体文件并开始标注。');
+            boxId.value = generateId();
+            
+            // 初始化星辰和鼠标
+            initStars();
+            drawStars();
+            moveCursorFollower();
+            
+            // 为所有按钮添加星辰效果
+            document.querySelectorAll('button').forEach(btn => {
+                btn.addEventListener('mouseenter', () => {
+                    cursor.style.transform = 'translate(-50%, -50%) scale(1.5)';
+                    cursor.style.background = 'radial-gradient(circle, #4fc3f7 0%, #01579b 70%, transparent 71%)';
+                });
+                
+                btn.addEventListener('mouseleave', () => {
+                    cursor.style.transform = 'translate(-50%, -50%) scale(1)';
+                    cursor.style.background = 'radial-gradient(circle, #4fc3f7 0%, #01579b 70%, transparent 71%)';
+                });
+            });
+        }
+        
+        // 加载媒体
+        function loadMedia() {
+            if (mediaType === 'webcam') {
+                loadWebcam();
+            } else {
+                const file = mediaInput.files[0];
+                if (!file) {
+                    updateStatus('请先选择文件', 'error');
+                    return;
+                }
+                
+                if (mediaType === 'image') {
+                    loadImage(file);
+                } else if (mediaType === 'video') {
+                    loadVideo(file);
+                }
+            }
+        }
+        
+        // 加载图像
+        function loadImage(file) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const img = new Image();
+                img.onload = function() {
+                    setupCanvas(img.width, img.height);
+                    ctx.drawImage(img, 0, 0);
+                    updateStatus('图像已加载。可以开始标注。');
+                };
+                img.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+        
+        // 加载视频
+        function loadVideo(file) {
+            if (videoStream) {
+                videoStream.getTracks().forEach(track => track.stop());
+                videoStream = null;
+            }
+            
+            const videoUrl = URL.createObjectURL(file);
+            video = document.createElement('video');
+            video.src = videoUrl;
+            
+            video.addEventListener('loadedmetadata', function() {
+                setupCanvas(video.videoWidth, video.videoHeight);
+                video.play();
+                drawVideoFrame();
+                updateStatus('视频已加载。可以开始标注。');
+            });
+        }
+        
+        // 加载摄像头
+        function loadWebcam() {
+            if (videoStream) {
+                videoStream.getTracks().forEach(track => track.stop());
+                videoStream = null;
+                if (video) {
+                    video.pause();
+                    video.srcObject = null;
+                }
+                return;
+            }
+            
+            navigator.mediaDevices.getUserMedia({ video: true })
+                .then(function(stream) {
+                    videoStream = stream;
+                    video = document.createElement('video');
+                    video.srcObject = stream;
+                    video.play();
+                    
+                    // 等待视频实际开始播放以获取正确的尺寸
+                    const checkSize = () => {
+                        if (video.videoWidth > 0 && video.videoHeight > 0) {
+                            setupCanvas(video.videoWidth, video.videoHeight);
+                            drawVideoFrame();
+                            updateStatus('摄像头已开启。可以开始标注。');
+                        } else {
+                            setTimeout(checkSize, 100);
+                        }
+                    };
+                    checkSize();
+                })
+                .catch(function(err) {
+                    updateStatus('无法访问摄像头: ' + err.message, 'error');
+                });
+        }
+        
+        // 设置画布尺寸
+        function setupCanvas(width, height) {
+            // 保持宽高比，限制最大尺寸为800px
+            const maxSize = 800;
+            let ratio = 1;
+            
+            if (width > height) {
+                ratio = maxSize / width;
+            } else {
+                ratio = maxSize / height;
+            }
+            
+            const displayWidth = Math.floor(width * ratio);
+            const displayHeight = Math.floor(height * ratio);
+            
+            canvas.width = width;
+            canvas.height = height;
+            canvas.style.width = displayWidth + 'px';
+            canvas.style.height = displayHeight + 'px';
+            
+            motionCanvas.width = width;
+            motionCanvas.height = height;
+            motionCanvas.style.width = displayWidth + 'px';
+            motionCanvas.style.height = displayHeight + 'px';
+            
+            // 清除之前的动画帧
+            if (animationId) {
+                cancelAnimationFrame(animationId);
+                animationId = null;
+            }
+        }
+        
+        // 绘制视频帧
+        function drawVideoFrame() {
+            if (!video) return;
+            
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+            
+            // 绘制所有追踪框
+            drawAllBoxes();
+            
+            // 如果启用了运动检测
+            if (motionDetectionActive || trackMotionActive) {
+                detectMotion();
+            }
+            
+            // 继续动画循环
+            animationId = requestAnimationFrame(drawVideoFrame);
+        }
+        
+        // 开始绘制框
+        function startDrawing(e) {
+            if (!canvas.width || !canvas.height) return;
+            
+            isDrawing = true;
+            const rect = canvas.getBoundingClientRect();
+            const scaleX = canvas.width / rect.width;
+            const scaleY = canvas.height / rect.height;
+            
+            startX = (e.clientX - rect.left) * scaleX;
+            startY = (e.clientY - rect.top) * scaleY;
+            
+            // 创建新框
+            currentBox = {
+                id: boxId.value || generateId(),
+                x: startX,
+                y: startY,
+                width: 0,
+                height: 0,
+                color: boxColor.value,
+                lineWidth: parseInt(boxWidth.value),
+                label: boxLabel.value || '未命名'
+            };
+            
+            // 鼠标效果
+            cursor.style.transform = 'translate(-50%, -50%) scale(0.8)';
+            cursor.style.background = 'radial-gradient(circle, #FF0000 0%, #990000 70%, transparent 71%)';
+        }
+        
+        // 绘制框
+        function draw(e) {
+            if (!isDrawing || !currentBox) return;
+            
+            const rect = canvas.getBoundingClientRect();
+            const scaleX = canvas.width / rect.width;
+            const scaleY = canvas.height / rect.height;
+            
+            const mouseX = (e.clientX - rect.left) * scaleX;
+            const mouseY = (e.clientY - rect.top) * scaleY;
+            
+            currentBox.width = mouseX - startX;
+            currentBox.height = mouseY - startY;
+            
+            // 重绘画布
+            if (video) {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+            }
+            
+            // 绘制所有已存在的框
+            drawAllBoxes();
+            
+            // 绘制当前正在绘制的框
+            drawBox(currentBox);
+        }
+        
+        // 结束绘制
+        function endDrawing() {
+            if (!isDrawing || !currentBox) return;
+            
+            // 确保框有最小尺寸
+            if (Math.abs(currentBox.width) < 10 || Math.abs(currentBox.height) < 10) {
+                isDrawing = false;
+                currentBox = null;
+                if (video) {
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                    drawAllBoxes();
+                }
+                
+                // 恢复鼠标效果
+                cursor.style.transform = 'translate(-50%, -50%) scale(1)';
+                cursor.style.background = 'radial-gradient(circle, #4fc3f7 0%, #01579b 70%, transparent 71%)';
+                return;
+            }
+            
+            // 确保宽度和高度为正数
+            if (currentBox.width < 0) {
+                currentBox.x += currentBox.width;
+                currentBox.width = -currentBox.width;
+            }
+            if (currentBox.height < 0) {
+                currentBox.y += currentBox.height;
+                currentBox.height = -currentBox.height;
+            }
+            
+            // 添加到追踪框列表
+            trackingBoxes.push(currentBox);
+            updateBoxList();
+            
+            isDrawing = false;
+            currentBox = null;
+            
+            // 生成新ID
+            boxId.value = generateId();
+            
+            // 恢复鼠标效果
+            cursor.style.transform = 'translate(-50%, -50%) scale(1)';
+            cursor.style.background = 'radial-gradient(circle, #4fc3f7 0%, #01579b 70%, transparent 71%)';
+        }
+        
+        // 绘制单个框
+        function drawBox(box) {
+            ctx.beginPath();
+            ctx.rect(box.x, box.y, box.width, box.height);
+            ctx.lineWidth = box.lineWidth;
+            ctx.strokeStyle = box.color;
+            ctx.stroke();
+            
+            // 绘制标签背景
+            ctx.fillStyle = box.color;
+            const textWidth = ctx.measureText(box.label).width;
+            ctx.fillRect(box.x, box.y - 20, textWidth + 10, 20);
+            
+            // 绘制标签文本
+            ctx.fillStyle = '#FFFFFF';
+            ctx.font = '14px Arial';
+            ctx.fillText(box.label, box.x + 5, box.y - 5);
+        }
+        
+        // 绘制所有框
+        function drawAllBoxes() {
+            trackingBoxes.forEach(box => {
+                drawBox(box);
+            });
+        }
+        
+        // 更新追踪框列表
+        function updateBoxList() {
+            boxList.innerHTML = '';
+            
+            if (trackingBoxes.length === 0) {
+                noBoxesMsg.classList.remove('hidden');
+                return;
+            }
+            
+            noBoxesMsg.classList.add('hidden');
+            
+            trackingBoxes.forEach((box, index) => {
+                const boxItem = document.createElement('div');
+                boxItem.className = 'box-item';
+                
+                const colorBox = document.createElement('div');
+                colorBox.className = 'box-color';
+                colorBox.style.backgroundColor = box.color;
+                
+                const labelSpan = document.createElement('span');
+                labelSpan.className = 'box-label';
+                labelSpan.textContent = box.label;
+                
+                const coordsSpan = document.createElement('span');
+                coordsSpan.className = 'box-coords';
+                coordsSpan.textContent = `(${Math.round(box.x)}, ${Math.round(box.y)}) ${Math.round(box.width)}×${Math.round(box.height)}`;
+                
+                const deleteBtn = document.createElement('button');
+                deleteBtn.textContent = '删除';
+                deleteBtn.className = 'danger';
+                deleteBtn.style.padding = '3px 8px';
+                deleteBtn.style.fontSize = '12px';
+                deleteBtn.addEventListener('click', () => {
+                    trackingBoxes.splice(index, 1);
+                    updateBoxList();
+                    if (video) {
+                        ctx.clearRect(0, 0, canvas.width, canvas.height);
+                        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                        drawAllBoxes();
+                    }
+                });
+                
+                boxItem.appendChild(colorBox);
+                boxItem.appendChild(labelSpan);
+                boxItem.appendChild(coordsSpan);
+                boxItem.appendChild(deleteBtn);
+                boxList.appendChild(boxItem);
+            });
+        }
+        
+        // 清除所有框
+        function clearAllBoxes() {
+            trackingBoxes = [];
+            updateBoxList();
+            if (video) {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+            }
+            updateStatus('已清除所有追踪框');
+        }
+        
+        // 导出标注
+        function exportAnnotations() {
+            if (trackingBoxes.length === 0) {
+                updateStatus('没有可导出的标注', 'error');
+                return;
+            }
+            
+            const data = {
+                mediaType: mediaType,
+                canvasWidth: canvas.width,
+                canvasHeight: canvas.height,
+                boxes: trackingBoxes
+            };
+            
+            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'annotations_' + new Date().toISOString().slice(0, 10) + '.json';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            
+            updateStatus('标注已导出');
+        }
+        
+        // 导入标注
+        function importAnnotations() {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = '.json';
+            
+            input.onchange = e => {
+                const file = e.target.files[0];
+                if (!file) return;
+                
+                const reader = new FileReader();
+                reader.onload = event => {
+                    try {
+                        const data = JSON.parse(event.target.result);
+                        
+                        // 验证数据
+                        if (!data.boxes || !Array.isArray(data.boxes)) {
+                            throw new Error('无效的标注文件');
+                        }
+                        
+                        trackingBoxes = data.boxes;
+                        updateBoxList();
+                        
+                        if (video) {
+                            ctx.clearRect(0, 0, canvas.width, canvas.height);
+                            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                            drawAllBoxes();
+                        }
+                        
+                        updateStatus(`已导入 ${trackingBoxes.length} 个标注`);
+                    } catch (err) {
+                        updateStatus('导入失败: ' + err.message, 'error');
+                    }
+                };
+                reader.readAsText(file);
+            };
+            
+            input.click();
+        }
+        
+        // 运动检测
+        function detectMotion() {
+            if (!video || !canvas.width || !canvas.height) return;
+            
+            // 获取当前帧
+            motionCtx.drawImage(video, 0, 0, canvas.width, canvas.height);
+            const currentFrame = motionCtx.getImageData(0, 0, canvas.width, canvas.height);
+            
+            if (!lastFrame) {
+                lastFrame = currentFrame;
+                return;
+            }
+            
+            // 比较帧差异
+            const diff = motionCtx.createImageData(canvas.width, canvas.height);
+            let motionPixels = 0;
+            
+            for (let i = 0; i < currentFrame.data.length; i += 4) {
+                const r1 = currentFrame.data[i];
+                const g1 = currentFrame.data[i+1];
+                const b1 = currentFrame.data[i+2];
+                
+                const r2 = lastFrame.data[i];
+                const g2 = lastFrame.data[i+1];
+                const b2 = lastFrame.data[i+2];
+                
+                // 计算RGB差异
+                const diffR = Math.abs(r1 - r2);
+                const diffG = Math.abs(g1 - g2);
+                const diffB = Math.abs(b1 - b2);
+                
+                // 如果差异大于阈值，标记为运动像素
+                const threshold = 30;
+                if (diffR > threshold || diffG > threshold || diffB > threshold) {
+                    diff.data[i] = 255;   // R
+                    diff.data[i+1] = 0;   // G
+                    diff.data[i+2] = 0;   // B
+                    diff.data[i+3] = 255; // A
+                    motionPixels++;
+                } else {
+                    diff.data[i] = 0;
+                    diff.data[i+1] = 0;
+                    diff.data[i+2] = 0;
+                    diff.data[i+3] = 0;
+                }
+            }
+            
+            // 更新最后一帧
+            lastFrame = currentFrame;
+            
+            // 如果启用了运动检测可视化
+            if (motionDetectionActive) {
+                motionCtx.putImageData(diff, 0, 0);
+            }
+            
+            // 如果启用了运动追踪且检测到足够运动
+            if (trackMotionActive && motionPixels > canvas.width * canvas.height * 0.01) {
+                // 简单实现：在运动区域周围创建框
+                // 实际应用中可以使用更复杂的算法来追踪单个运动物体
+                
+                // 检查是否已经有运动追踪框
+                const motionBoxIndex = trackingBoxes.findIndex(box => box.label === '运动物体');
+                
+                if (motionBoxIndex !== -1) {
+                    // 更新现有框的位置（简单实现：随机移动）
+                    const box = trackingBoxes[motionBoxIndex];
+                    box.x += (Math.random() * 10 - 5);
+                    box.y += (Math.random() * 10 - 5);
+                    
+                    // 确保框在画布内
+                    box.x = Math.max(0, Math.min(canvas.width - box.width, box.x));
+                    box.y = Math.max(0, Math.min(canvas.height - box.height, box.y));
+                } else {
+                    // 创建新框
+                    trackingBoxes.push({
+                        id: 'motion_' + generateId(),
+                        x: Math.random() * (canvas.width - 100),
+                        y: Math.random() * (canvas.height - 100),
+                        width: 100,
+                        height: 100,
+                        color: '#00FF00',
+                        lineWidth: 2,
+                        label: '运动物体'
+                    });
+                }
+                
+                updateBoxList();
+            }
+        }
+        
+        // 切换运动检测
+        function toggleMotionDetection() {
+            motionDetectionActive = !motionDetectionActive;
+            motionBtn.textContent = motionDetectionActive ? '关闭运动检测' : '开启运动检测';
+            motionBtn.className = motionDetectionActive ? 'success' : '';
+            
+            if (!motionDetectionActive) {
+                motionCtx.clearRect(0, 0, motionCanvas.width, motionCanvas.height);
+            }
+            
+            updateStatus(motionDetectionActive ? '运动检测已开启' : '运动检测已关闭');
+        }
+        
+        // 切换运动追踪
+        function toggleTrackMotion() {
+            trackMotionActive = !trackMotionActive;
+            trackMotionBtn.textContent = trackMotionActive ? '停止追踪运动' : '追踪运动物体';
+            trackMotionBtn.className = trackMotionActive ? 'success' : '';
+            
+            updateStatus(trackMotionActive ? '运动追踪已开启' : '运动追踪已关闭');
+        }
+        
+        // 生成随机ID
+        function generateId() {
+            return Math.random().toString(36).substr(2, 9);
+        }
+        
+        // 更新状态
+        function updateStatus(message, type = 'info') {
+            status.textContent = message;
+            status.style.backgroundColor = type === 'error' ? '#ffebee' : '#e8f4f8';
+            status.style.color = type === 'error' ? '#c62828' : '#333';
+        }
+        
+        // 窗口大小改变时重置星辰
+        window.addEventListener('resize', () => {
+            starfield.width = window.innerWidth;
+            starfield.height = window.innerHeight;
+            initStars();
+        });
+        
+        // 初始化应用
+        init();
+    </script>
+</body>
+</html>
