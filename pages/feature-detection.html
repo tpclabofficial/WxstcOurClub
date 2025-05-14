@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <title>时间碎片Lab特征检测系统</title>
+    <title>Thinking Perception Computing Lab特征检测系统</title>
     <!-- 国内CDN资源 -->
     <link href="https://cdn.bootcdn.net/ajax/libs/normalize/8.0.1/normalize.min.css" rel="stylesheet">
     <script src="../opencv.js" onload="onOpenCvReady();" async></script>
@@ -227,7 +227,7 @@
 <body>
     <div class="prism-bg"></div>
     <div class="container">
-        <h1>时间碎片Lab特征检测系统</h1>
+        <h1>Thinking Perception Computing Lab特征检测系统</h1>
         
         <div class="upload-area" id="dropZone">
             <h2>拖放图像至此处或点击选择文件</h2>
@@ -243,7 +243,7 @@
         </div>
         
         <div class="control-panel">
-            <button id="processBtn" disabled>启动时间碎片Lab分析</button>
+            <button id="processBtn" disabled>启动Thinking Perception Computing Lab分析</button>
         </div>
         
         <div class="result-container" id="resultContainer">
@@ -363,7 +363,7 @@
                 // 绘制图像
                 drawImages();
                 
-                setStatus(`已加载 ${images.length} 张图像，点击"启动时间碎片Lab分析"按钮开始处理`, 'ready');
+                setStatus(`已加载 ${images.length} 张图像，点击"启动Thinking Perception Computing Lab分析"按钮开始处理`, 'ready');
                 processBtn.disabled = false;
             } catch (error) {
                 setStatus(`图像加载失败: ${error.message}`, 'error');
